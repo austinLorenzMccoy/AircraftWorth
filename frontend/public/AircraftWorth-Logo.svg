@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 150" width="520" height="150">
+  <defs>
+    <!-- Main radar glow -->
+    <radialGradient id="rg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#2AF6FF" stop-opacity="0.22"/>
+      <stop offset="70%" stop-color="#1AA8B0" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#2AF6FF" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Sweep fill -->
+    <radialGradient id="sweep" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#2AF6FF" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#2AF6FF" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Wing shimmer -->
+    <linearGradient id="wg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2AF6FF"/>
+      <stop offset="50%" stop-color="#3DDC97"/>
+      <stop offset="100%" stop-color="#2AF6FF" stop-opacity="0.2"/>
+    </linearGradient>
+    <!-- Aircraft body -->
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#2AF6FF"/>
+    </linearGradient>
+    <!-- AIRCRAFT text gradient -->
+    <linearGradient id="tg1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#C8D8F0"/>
+    </linearGradient>
+    <!-- WORTH gradient — hedera purple to cyan -->
+    <linearGradient id="tg2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8259EF"/>
+      <stop offset="55%" stop-color="#4BA8F8"/>
+      <stop offset="100%" stop-color="#2AF6FF"/>
+    </linearGradient>
+    <!-- Glow filters -->
+    <filter id="glow1" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2.8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow2" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="textGlow" x="-10%" y="-30%" width="120%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="sweep_filter" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="520" height="150" fill="#080B0F" rx="14"/>
+
+  <!-- ╔══════════ ICON MARK ══════════╗ -->
+  <!-- Subtle hex border around icon area -->
+  <rect x="8" y="8" width="134" height="134" rx="67" fill="none" stroke="#1C2333" stroke-width="1"/>
+
+  <!-- Radar glow -->
+  <circle cx="75" cy="75" r="60" fill="url(#rg)"/>
+
+  <!-- Radar rings — 4 levels, crisp -->
+  <circle cx="75" cy="75" r="56" fill="none" stroke="#2AF6FF" stroke-width="0.5" opacity="0.14"/>
+  <circle cx="75" cy="75" r="43" fill="none" stroke="#2AF6FF" stroke-width="0.7" opacity="0.22"/>
+  <circle cx="75" cy="75" r="30" fill="none" stroke="#2AF6FF" stroke-width="0.9" opacity="0.35"/>
+  <circle cx="75" cy="75" r="17" fill="none" stroke="#2AF6FF" stroke-width="1.1" opacity="0.52"/>
+
+  <!-- Crosshair ticks (not full lines — subtle notches) -->
+  <line x1="75" y1="19" x2="75" y2="26" stroke="#2AF6FF" stroke-width="1" opacity="0.3"/>
+  <line x1="75" y1="124" x2="75" y2="131" stroke="#2AF6FF" stroke-width="1" opacity="0.3"/>
+  <line x1="19" y1="75" x2="26" y2="75" stroke="#2AF6FF" stroke-width="1" opacity="0.3"/>
+  <line x1="124" y1="75" x2="131" y2="75" stroke="#2AF6FF" stroke-width="1" opacity="0.3"/>
+
+  <!-- Sweep wedge — from center, ~40° arc -->
+  <path d="M75,75 L117,43 A57,57 0 0,0 75,18 L75,18 Z" fill="url(#sweep)" opacity="0.7"/>
+  <path d="M75,75 L117,43 A43,43 0 0,0 75,32 Z" fill="#2AF6FF" opacity="0.05"/>
+  <!-- Sweep line — the active sweep arm -->
+  <line x1="75" y1="75" x2="117" y2="43" stroke="#2AF6FF" stroke-width="1.8" opacity="0.92" filter="url(#glow1)"/>
+
+  <!-- ╔════ AIRCRAFT SILHOUETTE ════╗ -->
+  <!-- Fuselage — sleek pointed body -->
+  <path d="M75,54 C76,58 78,65 78,72 L75,71 L72,72 C72,65 74,58 75,54 Z"
+        fill="url(#bg2)" filter="url(#glow1)" opacity="0.95"/>
+  <!-- Port wing -->
+  <path d="M75,68 C70,70 58,76 44,80 L52,73 L72,70 Z"
+        fill="url(#wg)" opacity="0.88"/>
+  <!-- Starboard wing -->
+  <path d="M75,68 C80,70 92,76 106,80 L98,73 L78,70 Z"
+        fill="url(#wg)" opacity="0.88"/>
+  <!-- Port elevator -->
+  <path d="M75,88 L65,96 L72,91 Z" fill="#3DDC97" opacity="0.80"/>
+  <!-- Starboard elevator -->
+  <path d="M75,88 L85,96 L78,91 Z" fill="#3DDC97" opacity="0.80"/>
+  <!-- Vertical tail -->
+  <path d="M75,84 L73,95 L77,95 Z" fill="#2AF6FF" opacity="0.65"/>
+  <!-- Nose highlight -->
+  <circle cx="75" cy="54" r="1.8" fill="#FFFFFF" opacity="1.0" filter="url(#glow2)"/>
+
+  <!-- ╔════ SENSOR BLIPS ════╗ -->
+  <!-- Primary contact — bright, with glow -->
+  <circle cx="107" cy="50" r="3.2" fill="#3DDC97" filter="url(#glow2)" opacity="1.0"/>
+  <circle cx="107" cy="50" r="1.4" fill="#FFFFFF" opacity="0.9"/>
+  <!-- Secondary contact -->
+  <circle cx="55" cy="40" r="2.0" fill="#3DDC97" opacity="0.72" filter="url(#glow1)"/>
+  <!-- Tertiary — faded, outer ring -->
+  <circle cx="112" cy="88" r="1.6" fill="#2AF6FF" opacity="0.48"/>
+  <!-- Faint echo ring on primary -->
+  <circle cx="107" cy="50" r="6" fill="none" stroke="#3DDC97" stroke-width="0.6" opacity="0.3"/>
+
+  <!-- Center pivot -->
+  <circle cx="75" cy="75" r="2.5" fill="#2AF6FF" filter="url(#glow1)" opacity="0.95"/>
+  <circle cx="75" cy="75" r="1.0" fill="#FFFFFF" opacity="0.9"/>
+
+  <!-- Hedera mark — bottom right of icon, styled -->
+  <text x="107" y="118" font-family="Georgia,serif" font-weight="900" font-size="14"
+        fill="#8259EF" opacity="0.55" filter="url(#glow1)">ℍ</text>
+
+  <!-- ╔══════════ WORDMARK ══════════╗ -->
+  <!-- Vertical separator -->
+  <line x1="148" y1="38" x2="148" y2="112" stroke="#2AF6FF" stroke-width="1.2" opacity="0.35"/>
+
+  <!-- "AIRCRAFT" — serif, bold, white-to-silver -->
+  <text x="162" y="78"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-weight="700"
+        font-size="44"
+        fill="url(#tg1)"
+        letter-spacing="-1.5"
+        filter="url(#textGlow)">Aircraft</text>
+
+  <!-- Thin rule under Aircraft -->
+  <line x1="163" y1="84" x2="428" y2="84" stroke="#2AF6FF" stroke-width="0.5" opacity="0.2"/>
+
+  <!-- "Worth" — italic, hedera→cyan gradient -->
+  <text x="163" y="120"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-weight="400"
+        font-size="44"
+        font-style="italic"
+        fill="url(#tg2)"
+        letter-spacing="1.0">Worth</text>
+
+  <!-- Tagline -->
+  <text x="165" y="137"
+        font-family="'Courier New', Courier, monospace"
+        font-size="8.5"
+        fill="#3D4F6B"
+        letter-spacing="4.5">MLAT  ·  HEDERA  ·  MARKETPLACE</text>
+
+  <!-- Small smart-contracts badge — new addition -->
+  <rect x="340" y="105" width="108" height="18" rx="3"
+        fill="#1C2333" stroke="#8259EF" stroke-width="0.7" opacity="0.85"/>
+  <text x="394" y="117.5"
+        font-family="'Courier New', Courier, monospace"
+        font-size="7.5"
+        fill="#8259EF"
+        text-anchor="middle"
+        letter-spacing="1.5">SMART CONTRACTS</text>
+</svg>

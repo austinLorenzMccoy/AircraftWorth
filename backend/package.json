@@ -1,0 +1,19 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-009688?style=for-the-badge) ![Groq](https://img.shields.io/badge/Groq-Llama3-blueviolet?style=for-the-badge) ![Hedera](https://img.shields.io/badge/Hedera-Testnet-111?style=for-the-badge) ![Coverage](https://img.shields.io/badge/Coverage-100%25_target-orange?style=for-the-badge)",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@hashgraph/sdk": "^2.80.0",
+    "dotenv": "^17.3.1"
+  }
+}

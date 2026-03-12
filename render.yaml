@@ -1,0 +1,50 @@
+services:
+  - type: web
+    name: aircraftworth-backend
+    env: python
+    region: oregon
+    plan: free
+    rootDir: backend
+    buildCommand: pip install .
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      # Hedera Configuration
+      - key: HEDERA_NETWORK
+        value: testnet
+      - key: HEDERA_OPERATOR_ID
+        sync: false
+      - key: HEDERA_OPERATOR_KEY
+        sync: false
+      - key: HCS_TOPIC_ID
+        sync: false
+      - key: SWT_TOKEN_ID
+        sync: false
+      # Supabase Configuration
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # Neuron/MLAT Configuration
+      - key: NEURON_BUYER_ACCOUNT_ID
+        sync: false
+      - key: NEURON_BUYER_PRIVATE_KEY
+        sync: false
+      - key: NEURON_SENSOR_IDS
+        sync: false
+      - key: MLAT_MIN_SENSORS
+        value: 3
+      - key: MLAT_TIME_WINDOW_MS
+        value: 2000
+      - key: MLAT_CONFIDENCE_THRESHOLD
+        value: 80
+      - key: FORCE_REBUILD
+        value: "1"
+      # Optional: Groq AI (uncomment if needed)
+      # - key: GROQ_API_KEY
+      #   sync: false
+      # - key: GROQ_MODEL
+      #   value: llama3-70b-8192

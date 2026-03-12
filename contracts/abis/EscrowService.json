@@ -1,0 +1,65 @@
+[
+  {
+    "inputs": [
+      {"internalType": "uint256", "name": "offeringId", "type": "uint256"},
+      {"internalType": "address", "name": "buyer", "type": "address"},
+      {"internalType": "address", "name": "seller", "type": "address"},
+      {"internalType": "uint256", "name": "amount", "type": "uint256"},
+      {"internalType": "uint256", "name": "platformFee", "type": "uint256"},
+      {"internalType": "uint256", "name": "duration", "type": "uint256"}
+    ],
+    "name": "createEscrow",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "uint256", "name": "escrowId", "type": "uint256"}],
+    "name": "releaseEscrow",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "uint256", "name": "escrowId", "type": "uint256"},
+      {"internalType": "string", "name": "reason", "type": "string"}
+    ],
+    "name": "refundEscrow",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "internalType": "uint256", "name": "escrowId", "type": "uint256"},
+      {"indexed": true, "internalType": "uint256", "name": "offeringId", "type": "uint256"},
+      {"indexed": true, "internalType": "address", "name": "buyer", "type": "address"},
+      {"indexed": true, "internalType": "address", "name": "seller", "type": "address"}
+    ],
+    "name": "EscrowCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "internalType": "uint256", "name": "escrowId", "type": "uint256"},
+      {"indexed": true, "internalType": "address", "name": "seller", "type": "address"},
+      {"indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256"}
+    ],
+    "name": "EscrowReleased",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "internalType": "uint256", "name": "escrowId", "type": "uint256"},
+      {"indexed": true, "internalType": "address", "name": "buyer", "type": "address"},
+      {"indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256"},
+      {"indexed": false, "internalType": "string", "name": "reason", "type": "string"}
+    ],
+    "name": "EscrowRefunded",
+    "type": "event"
+  }
+]

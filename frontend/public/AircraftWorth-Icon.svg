@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150" width="150" height="150">
+  <defs>
+    <radialGradient id="rg"><stop offset="0%" stop-color="#2AF6FF" stop-opacity="0.28"/><stop offset="100%" stop-color="#2AF6FF" stop-opacity="0"/></radialGradient>
+    <radialGradient id="sweep"><stop offset="0%" stop-color="#2AF6FF" stop-opacity="0.15"/><stop offset="100%" stop-color="#2AF6FF" stop-opacity="0"/></radialGradient>
+    <linearGradient id="wg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#2AF6FF"/><stop offset="50%" stop-color="#3DDC97"/><stop offset="100%" stop-color="#2AF6FF" stop-opacity="0.2"/></linearGradient>
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#FFFFFF"/><stop offset="100%" stop-color="#2AF6FF"/></linearGradient>
+    <filter id="glow1" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="glow2" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="4.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="150" height="150" fill="#080B0F" rx="30"/>
+  <rect x="6" y="6" width="138" height="138" rx="26" fill="none" stroke="#1C2333" stroke-width="1"/>
+  <circle cx="75" cy="75" r="65" fill="url(#rg)"/>
+  <circle cx="75" cy="75" r="62" fill="none" stroke="#2AF6FF" stroke-width="0.5" opacity="0.13"/>
+  <circle cx="75" cy="75" r="47" fill="none" stroke="#2AF6FF" stroke-width="0.7" opacity="0.22"/>
+  <circle cx="75" cy="75" r="33" fill="none" stroke="#2AF6FF" stroke-width="0.9" opacity="0.36"/>
+  <circle cx="75" cy="75" r="18" fill="none" stroke="#2AF6FF" stroke-width="1.1" opacity="0.54"/>
+  <line x1="75" y1="13" x2="75" y2="22" stroke="#2AF6FF" stroke-width="1" opacity="0.28"/>
+  <line x1="75" y1="128" x2="75" y2="137" stroke="#2AF6FF" stroke-width="1" opacity="0.28"/>
+  <line x1="13" y1="75" x2="22" y2="75" stroke="#2AF6FF" stroke-width="1" opacity="0.28"/>
+  <line x1="128" y1="75" x2="137" y2="75" stroke="#2AF6FF" stroke-width="1" opacity="0.28"/>
+  <path d="M75,75 L120,40 A63,63 0 0,0 75,12 Z" fill="url(#sweep)" opacity="0.8"/>
+  <line x1="75" y1="75" x2="120" y2="40" stroke="#2AF6FF" stroke-width="2.2" opacity="0.92" filter="url(#glow1)"/>
+  <!-- Aircraft -->
+  <path d="M75,50 C76.5,55 79,64 79,72 L75,70.5 L71,72 C71,64 73.5,55 75,50 Z" fill="url(#bg2)" filter="url(#glow1)" opacity="0.95"/>
+  <path d="M75,67 C68,70 54,77 38,82 L48,74 L72,69 Z" fill="url(#wg)" opacity="0.9"/>
+  <path d="M75,67 C82,70 96,77 112,82 L102,74 L78,69 Z" fill="url(#wg)" opacity="0.9"/>
+  <path d="M75,90 L63,100 L71,94 Z" fill="#3DDC97" opacity="0.82"/>
+  <path d="M75,90 L87,100 L79,94 Z" fill="#3DDC97" opacity="0.82"/>
+  <path d="M75,86 L73,98 L77,98 Z" fill="#2AF6FF" opacity="0.6"/>
+  <circle cx="75" cy="50" r="2" fill="#FFFFFF" opacity="1" filter="url(#glow2)"/>
+  <!-- Blips -->
+  <circle cx="110" cy="47" r="3.8" fill="#3DDC97" filter="url(#glow2)" opacity="1.0"/>
+  <circle cx="110" cy="47" r="1.6" fill="#FFFFFF" opacity="0.95"/>
+  <circle cx="110" cy="47" r="7" fill="none" stroke="#3DDC97" stroke-width="0.7" opacity="0.35"/>
+  <circle cx="52" cy="38" r="2.2" fill="#3DDC97" opacity="0.68" filter="url(#glow1)"/>
+  <circle cx="115" cy="92" r="1.8" fill="#2AF6FF" opacity="0.44"/>
+  <!-- Center -->
+  <circle cx="75" cy="75" r="3" fill="#2AF6FF" filter="url(#glow1)" opacity="0.92"/>
+  <circle cx="75" cy="75" r="1.2" fill="#FFFFFF" opacity="0.9"/>
+  <!-- Hedera H -->
+  <text x="107" y="124" font-family="Georgia,serif" font-weight="900" font-size="16" fill="#8259EF" opacity="0.6" filter="url(#glow1)">ℍ</text>
+</svg>

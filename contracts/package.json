@@ -1,0 +1,47 @@
+{
+  "name": "@aircraftworth/contracts",
+  "version": "0.1.0",
+  "description": "Smart contracts for AircraftWorth marketplace and reputation system",
+  "main": "index.js",
+  "files": [
+    "*.sol"
+  ],
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:testnet": "hardhat run scripts/deploy-testnet.ts",
+    "deploy:mainnet": "hardhat run scripts/deploy-mainnet.ts",
+    "verify": "hardhat verify"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@openzeppelin/contracts": "^5.0.0",
+    "ethers": "^6.0.0",
+    "hardhat": "^2.19.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "hedera",
+    "solidity",
+    "smart-contracts",
+    "marketplace",
+    "reputation",
+    "escrow",
+    "aircraft",
+    "aviation"
+  ],
+  "author": "AircraftWorth <team@aircraftworth.io>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aircraftworth/contracts"
+  },
+  "homepage": "https://github.com/aircraftworth/contracts#readme",
+  "bugs": {
+    "url": "https://github.com/aircraftworth/contracts/issues"
+  },
+  "dependencies": {
+    "@hashgraph/sdk": "^2.80.0",
+    "dotenv": "^17.3.1"
+  }
+}
