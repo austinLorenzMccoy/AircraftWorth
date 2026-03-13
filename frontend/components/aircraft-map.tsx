@@ -104,14 +104,18 @@ export default function AircraftMap({ positions, sensors, onAircraftSelect }: Ai
 
     // Update or create markers
     latestPositions.forEach((pos, icao) => {
-      // Guard against undefined coordinates
-      if (!pos.latitude || !pos.longitude || 
-          isNaN(pos.latitude) || isNaN(pos.longitude)) {
-        console.warn('Invalid coordinates for aircraft', icao, pos);
-        return;
+      // Handle both field name conventions (latitude/lat, longitude/lon)
+      const lat = pos.latitude ?? pos.lat;
+      const lon = pos.longitude ?? pos.lon;
+      const confidence = pos.confidence_score ?? pos.confidence ?? 0.5;
+      const icaoCode = pos.icao_address ?? pos.icao ?? 'UNKNOWN';
+      
+      // Guard against undefined/invalid coordinates
+      if (!lat || !lon || isNaN(lat) || isNaN(lon)) {
+        return; // silently skip — no console spam in prod
       }
 
-      const latlng = L.latLng(pos.latitude, pos.longitude)
+      const latlng = L.latLng(lat, lon)
 
       if (markersRef.current[icao]) {
         // Update existing marker
@@ -124,7 +128,7 @@ export default function AircraftMap({ positions, sensors, onAircraftSelect }: Ai
             <div class="relative">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" 
-                      fill="${pos.confidence_score && pos.confidence_score >= 85 ? '#10b981' : '#f59e0b'}" 
+                      fill="${confidence >= 85 ? '#10b981' : '#f59e0b'}" 
                       stroke="#000" 
                       stroke-width="0.5"/>
               </svg>
@@ -141,18 +145,18 @@ export default function AircraftMap({ positions, sensors, onAircraftSelect }: Ai
           if (onAircraftSelect) {
             // Create track data for AI analysis (last few positions)
             const trackData = positions
-              .filter(p => p.icao_address === icao)
+              .filter(p => (p.icao_address ?? p.icao) === icaoCode)
               .slice(-8)
               .map(p => ({
-                lat: p.latitude,
-                lon: p.longitude,
-                alt_ft: p.altitude_ft,
-                confidence: p.confidence_score || 0,
+                lat: p.latitude ?? p.lat,
+                lon: p.longitude ?? p.lon,
+                alt_ft: p.altitude_ft ?? p.alt_ft,
+                confidence: p.confidence_score ?? p.confidence ?? 0,
                 timestamp_iso: p.calculated_at
               }));
 
             onAircraftSelect({
-              icao,
+              icao: icaoCode,
               hasAdsb: false, // Default to false since ADSB status not tracked
               sensorCount: pos.sensor_count || 0,
               track: trackData
@@ -162,17 +166,13 @@ export default function AircraftMap({ positions, sensors, onAircraftSelect }: Ai
 
         marker.bindPopup(`
           <div class="p-2 min-w-[200px]">
-            <p class="font-semibold font-mono text-lg">${pos.icao_address}</p>
-            <div class="mt-2 space-y-1 text-sm">
-              <p><span class="text-gray-600">Position:</span> ${pos.latitude.toFixed(4)}, ${pos.longitude.toFixed(4)}</p>
-              ${pos.altitude_ft ? `<p><span class="text-gray-600">Altitude:</span> ${pos.altitude_ft} ft</p>` : ''}
-              <p><span class="text-gray-600">Confidence:</span> ${pos.confidence_score?.toFixed(1)}%</p>
-              <p><span class="text-gray-600">Sensors:</span> ${pos.sensor_count}</p>
-              ${pos.hedera_sequence_number ? `<p><span class="text-gray-600">HCS:</span> #${pos.hedera_sequence_number}</p>` : ''}
-              ${pos.flight_track_token_id ? `<p><span class="text-gray-600">Token:</span> ${pos.flight_track_token_id}</p>` : ''}
-            </div>
+            <p class="font-semibold font-mono text-lg">${icaoCode}</p>
+            <p class="text-xs text-gray-600">Confidence: ${(confidence * 100).toFixed(0)}%</p>
+            <p class="text-xs">Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}</p>
+            <p class="text-xs">Alt: ${(pos.altitude_ft ?? pos.alt_ft ?? 'N/A')} ft</p>
+            <p class="text-xs">Sensors: ${pos.sensor_count || 0}</p>
           </div>
-        `)
+        `);
 
         markersRef.current[icao] = marker
       }

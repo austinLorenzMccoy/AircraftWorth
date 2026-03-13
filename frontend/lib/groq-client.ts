@@ -70,10 +70,10 @@ class GroqClient {
     }
 
     try {
-      const response = await fetch(`${this.baseUrl}/chat/completions`, {
+      // Use Next.js API proxy to avoid CORS
+      const response = await fetch('/api/groq', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
