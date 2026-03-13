@@ -104,6 +104,13 @@ export default function AircraftMap({ positions, sensors, onAircraftSelect }: Ai
 
     // Update or create markers
     latestPositions.forEach((pos, icao) => {
+      // Guard against undefined coordinates
+      if (!pos.latitude || !pos.longitude || 
+          isNaN(pos.latitude) || isNaN(pos.longitude)) {
+        console.warn('Invalid coordinates for aircraft', icao, pos);
+        return;
+      }
+
       const latlng = L.latLng(pos.latitude, pos.longitude)
 
       if (markersRef.current[icao]) {

@@ -1,25 +1,33 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Plane, Radio, Activity, MapPin } from 'lucide-react'
-import { supabase, type AircraftPosition, type Sensor } from '@/lib/supabase'
-import { demoAircraft, demoSensors, getDemoAircraftTrack } from '@/lib/demo-data'
-import { MLATNav } from '@/components/mlat-nav'
-import dynamic from 'next/dynamic'
+import { Plane, Activity, AlertTriangle, TrendingUp, Users, DollarSign } from 'lucide-react'
+import { groqClient } from '@/lib/groq-client'
+import { demoAircraft, demoSensors, getDemoAircraftTrack, getFallbackTrack } from '@/lib/demo-data'
+import { supabase } from '@/lib/supabase'
+import { type AircraftPosition, type Sensor } from '@/lib/supabase'
+
+// Dynamic import with SSR disabled for Leaflet
+const AircraftMap = dynamic(
+  () => import('@/components/aircraft-map'),
+  { 
+    ssr: false,
+    loading: () => <div className="h-[600px] bg-muted animate-pulse rounded-lg" />
+  }
+)
+
 import GhostIntelPanel from '@/components/intelligence/GhostIntelPanel'
 import FlightQueryBar from '@/components/intelligence/FlightQueryBar'
 import JudgeBanner from '@/components/demo/JudgeBanner'
 import KpiStrip from '@/components/demo/KpiStrip'
 import HederaProofStrip from '@/components/demo/HederaProofStrip'
 import ReplayToggle from '@/components/demo/ReplayToggle'
-
-// Dynamically import map to avoid SSR issues with Leaflet
-const AircraftMap = dynamic(() => import('@/components/aircraft-map'), {
-  ssr: false,
-  loading: () => <div className="h-[600px] bg-muted animate-pulse rounded-lg" />
-})
+import { MLATNav } from '@/components/mlat-nav'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { MapPin } from 'lucide-react'
 
 export default function MLATDashboard() {
   const [positions, setPositions] = useState<AircraftPosition[]>([])
@@ -194,8 +202,8 @@ export default function MLATDashboard() {
                 <p className="text-2xl font-bold text-foreground font-mono">{stats.activeSensors}</p>
               </div>
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Radio className="w-5 h-5 text-primary" />
-              </div>
+                  <RadioGroupItem value="sensors" className="w-5 h-5 text-primary" />
+                </div>
             </div>
           </CardContent>
         </Card>
