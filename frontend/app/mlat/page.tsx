@@ -202,7 +202,7 @@ export default function MLATDashboard() {
                 <p className="text-2xl font-bold text-foreground font-mono">{stats.activeSensors}</p>
               </div>
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <RadioGroupItem value="sensors" className="w-5 h-5 text-primary" />
+                  <RadioGroup defaultValue="sensors" className="w-5 h-5 text-primary" />
                 </div>
             </div>
           </CardContent>
