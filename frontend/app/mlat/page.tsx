@@ -188,7 +188,7 @@ export default function MLATPage(){
                     <span style={{color:c,fontSize:'12px',fontWeight:600,fontFamily:'monospace'}}>{ac.is_ghost&&<span style={{opacity:0.5}}>◌ </span>}{ac.icao}</span>
                     <span style={{color:'#555',fontSize:'10px'}}>{ac.alt_ft.toLocaleString()}ft</span>
                   </div>
-                  <div style={{height:'2px',background:'#1a2030',border-radius:'1px',overflow:hidden'}}>
+                  <div style={{height:'2px',background:'#1a1a2e',borderRadius:'1px',overflow:'hidden'}}>
                     <div style={{height:'100%',width:`${p}%`,background:p>=85?'#3DDC97':p>=65?'#FFB020':'#FF4444'}}/>
                   </div>
                   <div style={{display:'flex',justifyContent:'space-between',marginTop:'3px'}}>
