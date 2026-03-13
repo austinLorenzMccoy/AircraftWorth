@@ -1,327 +1,215 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import dynamic from 'next/dynamic'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Plane, Activity, AlertTriangle, TrendingUp, Users, DollarSign } from 'lucide-react'
-import { groqClient } from '@/lib/groq-client'
-import { demoAircraft, demoSensors, getDemoAircraftTrack, getFallbackTrack } from '@/lib/demo-data'
-import { supabase } from '@/lib/supabase'
-import { type AircraftPosition, type Sensor } from '@/lib/supabase'
+import { useEffect, useRef, useState } from 'react';
 
-// Dynamic import with SSR disabled for Leaflet
-const AircraftMap = dynamic(
-  () => import('@/components/aircraft-map'),
-  { 
-    ssr: false,
-    loading: () => <div className="h-[600px] bg-muted animate-pulse rounded-lg" />
-  }
-)
+interface Aircraft {
+  icao: string; callsign?: string; lat: number; lon: number;
+  alt_ft: number; speed_kts?: number; heading?: number;
+  confidence: number; cooperative: boolean; sensor_count?: number;
+  is_ghost?: boolean; color?: string; type?: string;
+}
 
-import GhostIntelPanel from '@/components/intelligence/GhostIntelPanel'
-import FlightQueryBar from '@/components/intelligence/FlightQueryBar'
-import JudgeBanner from '@/components/demo/JudgeBanner'
-import KpiStrip from '@/components/demo/KpiStrip'
-import HederaProofStrip from '@/components/demo/HederaProofStrip'
-import ReplayToggle from '@/components/demo/ReplayToggle'
-import WalletConnectButton from '@/components/hedera/WalletConnectButton'
-import ClientOnlyWrapper from '@/components/hedera/ClientOnlyWrapper'
-import { MLATNav } from '@/components/mlat-nav'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { MapPin } from 'lucide-react'
+const DEMO: Aircraft[] = [
+  { icao:'BAW123', callsign:'BA123', lat:51.50, lon:-0.45, alt_ft:22000, speed_kts:310, heading:95,  confidence:0.94, cooperative:true,  sensor_count:6 },
+  { icao:'RYR88X', callsign:'FR88X', lat:51.62, lon:-0.30, alt_ft:9500,  speed_kts:240, heading:145, confidence:0.87, cooperative:true,  sensor_count:5 },
+  { icao:'N33LAX',                   lat:51.45, lon:-1.10, alt_ft:5200,  speed_kts:180, heading:220, confidence:0.71, cooperative:false, sensor_count:4 },
+];
 
-export default function MLATDashboard() {
-  const [mounted, setMounted] = useState(false)
-  const [positions, setPositions] = useState<AircraftPosition[]>([])
-  const [sensors, setSensors] = useState<Sensor[]>([])
-  const [selectedAircraft, setSelectedAircraft] = useState<any>(null)
-  const [stats, setStats] = useState({
-    totalAircraft: 0,
-    avgConfidence: 0,
-    hederaLogs: 0,
-    activeSensors: 0
-  })
+const GHOSTS = [
+  { icao:'AWX001', callsign:'GHOST-1', type:'B738', alt_ft:34000, speed_kts:485, heading:127, cooperative:false, color:'#FF4444',
+    waypoints:[[51.80,-2.50],[51.65,-1.50],[51.50,-0.50],[51.35,0.30]] as [number,number][], duration:30000, delay:0 },
+  { icao:'AWX002', callsign:'EZY247',  type:'A320', alt_ft:28500, speed_kts:420, heading:195, cooperative:true,  color:'#3DDC97',
+    waypoints:[[52.10,-0.90],[51.70,-0.75],[51.30,-0.65],[51.10,-0.60]] as [number,number][], duration:24000, delay:6000 },
+  { icao:'AWX003', callsign:'GHOST-3', type:'UNKN', alt_ft:41000, speed_kts:510, heading:78,  cooperative:false, color:'#FFB020',
+    waypoints:[[51.60,-2.20],[51.52,-0.80],[51.48,0.60]] as [number,number][], duration:26000, delay:12000 },
+];
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+function lerp(a:[number,number],b:[number,number],t:number):[number,number]{return[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];}
+function routePos(wps:[number,number][],p:number):[number,number]{const s=wps.length-1,x=p*s,i=Math.min(Math.floor(x),s-1);return lerp(wps[i],wps[i+1],x-i);}
 
-  useEffect(() => {
-    if (!mounted) return
-    // Load demo data
-    const demoPositions = demoAircraft.map(aircraft => ({
-      id: aircraft.id,
-      icao_address: aircraft.icao_address || aircraft.icao,
-      latitude: aircraft.lat,
-      longitude: aircraft.lon,
-      altitude_ft: aircraft.alt_ft,
-      confidence_score: aircraft.confidence,
-      calculated_at: aircraft.calculated_at,
-      has_adsb: aircraft.has_adsb,
-      sensor_count: aircraft.sensor_count
-    }))
-    setPositions(demoPositions)
-    setSensors(demoSensors)
-    updateStats(demoPositions)
-  }, [mounted])
+function svgIcon(color:string,heading:number,ghost:boolean){
+  const pulse=ghost?`<circle cx="16" cy="16" r="5" fill="${color}" opacity="0.35"><animate attributeName="r" values="5;13;5" dur="2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.4;0;0.4" dur="2s" repeatCount="indefinite"/></circle>`:'';
+  const ring=ghost?`<circle cx="16" cy="16" r="13" fill="none" stroke="${color}" stroke-width="1.2" stroke-dasharray="3,3" opacity="0.45"/>`:'';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 32 32">${pulse}<g transform="rotate(${heading},16,16)"><path d="M16 3L18.5 13L29 17.5L29 20L18.5 17.5L17.5 26L21 27.5L21 29L16 27.5L11 29L11 27.5L14.5 26L13.5 17.5L3 20L3 17.5L13.5 13Z" fill="${color}" opacity="0.92"/></g>${ring}</svg>`;
+}
 
-  useEffect(() => {
-    if (!supabase) return
+function popup(ac:Aircraft){
+  const c=ac.color??(ac.cooperative?'#3DDC97':'#FF4444'),p=Math.round(ac.confidence*100),b=p>=85?'#3DDC97':p>=65?'#FFB020':'#FF4444';
+  return `<div style="background:#0D1117;border:1px solid ${c}44;border-radius:8px;padding:12px 14px;min-width:210px;font-family:'Courier New',monospace;color:#E6EAF0;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="background:${c}22;color:${c};border:1px solid ${c}55;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:bold;">${ac.cooperative?'● ADS-B':'◌ MLAT ONLY'}</span>${ac.type?`<span style="color:#555;font-size:10px;">${ac.type}</span>`:''}</div>
+    <div style="font-size:15px;font-weight:bold;color:${c};margin-bottom:8px;">${ac.icao}${ac.callsign?` · ${ac.callsign}`:''}</div>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:11px;margin-bottom:8px;">
+      <span style="color:#666;">ALT</span><span>${ac.alt_ft.toLocaleString()} ft</span>
+      ${ac.speed_kts?`<span style="color:#666;">SPD</span><span>${ac.speed_kts} kts</span>`:''}
+      <span style="color:#666;">CONF</span><span style="color:${b}">${p}%</span>
+      <span style="color:#666;">METHOD</span><span style="color:#3DDC97;">${ac.cooperative?'ADS-B+MLAT':'TDOA/MLAT'}</span>
+    </div>
+    <div style="height:3px;background:#1a1a2e;border-radius:2px;overflow:hidden;margin-bottom:8px;"><div style="height:100%;width:${p}%;background:${b};"></div></div>
+    ${!ac.cooperative?`<div style="padding:5px 8px;background:#FF444411;border:1px solid #FF444433;border-radius:4px;font-size:10px;color:#FF8888;margin-bottom:6px;">⚠ Non-cooperative · No transponder</div>`:''}
+    <div style="padding:4px 6px;background:#3DDC9711;border-radius:4px;font-size:9px;color:#3DDC9799;">HCS: 0.0.7968510${ac.is_ghost?' · DEMO':''}</div>
+  </div>`;
+}
 
-    // Fetch initial data
-    fetchPositions()
-    fetchSensors()
+export default function MLATPage(){
+  const elRef=useRef<HTMLDivElement>(null);
+  const mapRef=useRef<unknown>(null);
+  const mRef=useRef<Map<string,unknown>>(new Map());
+  const tRef=useRef<Map<string,unknown>>(new Map());
+  const tdRef=useRef<Map<string,[number,number][]>>(new Map());
+  const rafRef=useRef(0);
+  const t0Ref=useRef(0);
 
-    // Subscribe to realtime position updates
-    const positionChannel = supabase
-      .channel('aircraft_positions')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'aircraft_positions'
-        },
-        (payload: any) => {
-          const newPosition = payload.new as AircraftPosition
-          setPositions((prev) => [newPosition, ...prev.slice(0, 49)])
-          updateStats([newPosition, ...positions])
-        }
-      )
-      .subscribe()
+  const [list,setList]=useState<Aircraft[]>(DEMO);
+  const [sel,setSel]=useState<Aircraft|null>(null);
+  const [q,setQ]=useState('');
+  const [reply,setReply]=useState('');
+  const [loading,setLoading]=useState(false);
+  const [seq,setSeq]=useState(4824);
 
-    return () => {
-      supabase.removeChannel(positionChannel)
-    }
-  }, [])
+  useEffect(()=>{const t=setInterval(()=>setSeq(s=>s+1),3200);return()=>clearInterval(t);},[]);
 
-  const fetchPositions = async () => {
-    if (!supabase) {
-      // Use demo data if supabase is not available
-      setPositions(demoAircraft)
-      updateStats(demoAircraft)
-      return
-    }
+  useEffect(()=>{
+    if(mapRef.current||!elRef.current)return;
+    if(!document.getElementById('lf-css')){const l=document.createElement('link');l.id='lf-css';l.rel='stylesheet';l.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';document.head.appendChild(l);}
 
-    try {
-      const { data, error } = await supabase
-        .from('aircraft_positions')
-        .select('*')
-        .order('calculated_at', { ascending: false })
-        .limit(50)
+    import('leaflet').then(L=>{
+      if(mapRef.current||!elRef.current)return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete(L.Icon.Default.prototype as any)._getIconUrl;
+      L.Icon.Default.mergeOptions({iconRetinaUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',iconUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'});
+      const map=L.map(elRef.current!,{center:[51.5,-0.8],zoom:9,zoomControl:true,attributionControl:false});
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:19}).addTo(map);
+      mapRef.current=map;
+      DEMO.forEach(ac=>mark(L,map,ac));
+      t0Ref.current=Date.now();
 
-      if (data && !error) {
-        setPositions(data)
-        updateStats(data)
-      } else {
-        // Fallback to demo data on error
-        console.warn('Database error, using demo data:', error)
-        setPositions(demoAircraft)
-        updateStats(demoAircraft)
-      }
-    } catch (err) {
-      console.warn('Database connection failed, using demo data:', err)
-      setPositions(demoAircraft)
-      updateStats(demoAircraft)
-    }
+      const tick=()=>{
+        const now=Date.now(),ghosts:Aircraft[]=[];
+        GHOSTS.forEach(g=>{
+          const e=now-t0Ref.current-g.delay;if(e<0)return;
+          const[lat,lon]=routePos(g.waypoints,(e%g.duration)/g.duration);
+          const ac:Aircraft={icao:g.icao,callsign:g.callsign,type:g.type,lat,lon,alt_ft:g.alt_ft,speed_kts:g.speed_kts,heading:g.heading,confidence:g.cooperative?0.91:0.73,cooperative:g.cooperative,sensor_count:g.cooperative?6:4,is_ghost:true,color:g.color};
+          ghosts.push(ac);mark(L,map,ac);
+          const tr=tdRef.current.get(g.icao)??[];tr.push([lat,lon]);if(tr.length>10)tr.shift();tdRef.current.set(g.icao,tr);
+          if(tr.length>=2){const ep=tRef.current.get(g.icao) as import('leaflet').Polyline|undefined;if(ep){ep.setLatLngs(tr);}else{const p=L.polyline(tr,{color:g.color,weight:1.5,opacity:0.45,dashArray:'5,6'});p.addTo(map);tRef.current.set(g.icao,p);}}
+        });
+        setList([...DEMO,...ghosts]);
+        rafRef.current=requestAnimationFrame(tick);
+      };
+      rafRef.current=requestAnimationFrame(tick);
+    });
+
+    return()=>{
+      cancelAnimationFrame(rafRef.current);
+      if(mapRef.current){(mapRef.current as{remove:()=>void}).remove();mapRef.current=null;}
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
+
+  function mark(L:typeof import('leaflet'),map:import('leaflet').Map,ac:Aircraft){
+    const c=ac.color??(ac.cooperative?'#3DDC97':'#FF4444');
+    const icon=L.divIcon({html:svgIcon(c,ac.heading??0,!ac.cooperative),className:'',iconSize:[36,36],iconAnchor:[18,18]});
+    const ex=mRef.current.get(ac.icao) as import('leaflet').Marker|undefined;
+    if(ex){ex.setLatLng([ac.lat,ac.lon]);ex.setIcon(icon);}
+    else{const m=L.marker([ac.lat,ac.lon],{icon,zIndexOffset:500});m.bindPopup(popup(ac),{maxWidth:260,className:'aw-popup'});m.on('click',()=>setSel(ac));m.addTo(map);mRef.current.set(ac.icao,m);}
   }
 
-  const fetchSensors = async () => {
-    if (!supabase) {
-      // Use demo data if supabase is not available
-      setSensors(demoSensors)
-      setStats(prev => ({ ...prev, activeSensors: demoSensors.filter(s => s.status === 'online').length }))
-      return
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('sensors')
-        .select('*')
-
-      if (data && !error) {
-        setSensors(data)
-        setStats(prev => ({ ...prev, activeSensors: data.length }))
-      } else {
-        // Fallback to demo data on error
-        console.warn('Database error, using demo sensors:', error)
-        setSensors(demoSensors)
-        setStats(prev => ({ ...prev, activeSensors: demoSensors.filter(s => s.status === 'online').length }))
-      }
-    } catch (err) {
-      console.warn('Database connection failed, using demo sensors:', err)
-      setSensors(demoSensors)
-      setStats(prev => ({ ...prev, activeSensors: demoSensors.filter(s => s.status === 'online').length }))
-    }
+  async function ask(question:string){
+    if(!question.trim())return;
+    setLoading(true);setReply('');
+    try{
+      const ctx=list.map(a=>`${a.icao}: alt=${a.alt_ft}ft conf=${Math.round(a.confidence*100)}% ${a.cooperative?'ADS-B':'MLAT-only'}`).join('\n');
+      const r=await fetch('/api/groq',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:200,messages:[{role:'system',content:'Aviation intelligence AI. Be concise, 2-3 sentences.'},{role:'user',content:`Aircraft:\n${ctx}\n\nQuestion: ${question}`}]})});
+      const d=await r.json();
+      setReply(d?.choices?.[0]?.message?.content??'No response.');
+    }catch{setReply('AI unavailable — add GROQ_API_KEY to Vercel env vars.');}
+    finally{setLoading(false);}
   }
 
-  const updateStats = (data: AircraftPosition[]) => {
-    const uniqueAircraft = new Set(data.map(p => p.icao_address)).size
-    const avgConf = data.reduce((sum, p) => sum + (p.confidence_score || 0), 0) / (data.length || 1)
-    const hederaCount = data.filter(p => p.hedera_sequence_number).length
-
-    setStats(prev => ({
-      ...prev,
-      totalAircraft: uniqueAircraft,
-      avgConfidence: Math.round(avgConf),
-      hederaLogs: hederaCount
-    }))
+  function focus(ac:Aircraft){
+    setSel(ac);
+    const map=mapRef.current as import('leaflet').Map|null;
+    if(map){map.panTo([ac.lat,ac.lon]);(mRef.current.get(ac.icao) as import('leaflet').Marker|undefined)?.openPopup();}
   }
 
-  return (
-    <>
-      <JudgeBanner />
-      <KpiStrip sensorCount={stats.activeSensors} successRate={stats.avgConfidence} hcsLive={true} />
-      <ReplayToggle isLive={true} />
-      
-      <MLATNav />
-      <div className="p-6 max-w-7xl mx-auto" style={{ paddingBottom: '80px' }}> {/* Add padding for HederaProofStrip */}
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">
-              Aircraft Tracking - MLAT Dashboard
-            </h2>
-            <p className="text-muted-foreground">
-              Real-time multilateration using Neuron sensor network + Hedera consensus
-            </p>
-          </div>
-          <ClientOnlyWrapper fallback={<div className="w-80 h-32 bg-muted animate-pulse rounded-lg" />}>
-            <WalletConnectButton />
-          </ClientOnlyWrapper>
+  const nonCoop=list.filter(a=>!a.cooperative).length;
+  const avgConf=list.length?Math.round(list.reduce((s,a)=>s+a.confidence,0)/list.length*100):0;
+
+  return(
+    <div style={{display:'flex',flexDirection:'column',height:'100vh',background:'#080B0F',color:'#E6EAF0',fontFamily:'system-ui,sans-serif',overflow:'hidden'}}>
+      <div style={{display:'flex',alignItems:'center',gap:'16px',padding:'10px 16px',borderBottom:'1px solid #1a2030',background:'#0D1117',flexShrink:0}}>
+        <span style={{color:'#3DDC97',fontSize:'15px',fontWeight:700}}>✈ AircraftWorth</span>
+        <span style={{color:'#4a9',fontSize:'11px',fontFamily:'monospace'}}>MLAT LIVE</span>
+        <div style={{display:'flex',gap:'20px',marginLeft:'12px'}}>
+          {[{l:'TRACKED',v:list.length,c:'#3DDC97'},{l:'NON-COOP',v:nonCoop,c:'#FF4444'},{l:'AVG CONF',v:`${avgConf}%`,c:'#FFB020'},{l:'HCS SEQ',v:`#${seq}`,c:'#7B8FFF'}].map(k=>(
+            <div key={k.l} style={{textAlign:'center'}}>
+              <div style={{color:k.c,fontSize:'14px',fontWeight:700,fontFamily:'monospace'}}>{k.v}</div>
+              <div style={{color:'#444',fontSize:'9px',letterSpacing:'1px'}}>{k.l}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{marginLeft:'auto'}}>
+          <a href="https://hashscan.io/testnet/topic/0.0.7968510" target="_blank" rel="noreferrer"
+            style={{background:'#7B8FFF22',border:'1px solid #7B8FFF44',color:'#7B8FFF',padding:'4px 10px',borderRadius:'4px',fontSize:'11px',fontFamily:'monospace',textDecoration:'none'}}>HCS ↗</a>
         </div>
       </div>
 
-      {/* AI Query Bar */}
-      <FlightQueryBar aircraftCount={stats.totalAircraft} />
+      <div style={{flex:1,display:'flex',overflow:'hidden'}}>
+        <div ref={elRef} style={{flex:1,position:'relative'}}/>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <Card className="bg-card border-border">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Tracked Aircraft</p>
-                <p className="text-2xl font-bold text-foreground font-mono">{stats.totalAircraft}</p>
-              </div>
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Plane className="w-5 h-5 text-primary" />
-              </div>
+        <div style={{width:'270px',borderLeft:'1px solid #1a2030',background:'#0A0E14',display:'flex',flexDirection:'column',overflow:'hidden',flexShrink:0}}>
+          <div style={{padding:'12px',borderBottom:'1px solid #1a2030'}}>
+            <div style={{color:'#3DDC97',fontSize:'11px',fontWeight:600,letterSpacing:'1px',marginBottom:'8px'}}>🧠 AI QUERY</div>
+            <div style={{display:'flex',gap:'6px',marginBottom:'8px'}}>
+              <input value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==='Enter'&&ask(q)} placeholder="Ask about aircraft..."
+                style={{flex:1,background:'#0D1117',border:'1px solid #1a2030',color:'#E6EAF0',padding:'6px 8px',borderRadius:'4px',fontSize:'12px',outline:'none',fontFamily:'monospace'}}/>
+              <button onClick={()=>ask(q)} disabled={loading}
+                style={{background:loading?'#1a2030':'#3DDC9722',border:'1px solid #3DDC9744',color:'#3DDC97',padding:'6px 10px',borderRadius:'4px',cursor:'pointer',fontSize:'12px'}}>
+                {loading?'…':'→'}
+              </button>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card border-border">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Avg Confidence</p>
-                <p className="text-2xl font-bold text-foreground font-mono">{stats.avgConfidence}%</p>
-              </div>
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Activity className="w-5 h-5 text-primary" />
-              </div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:'4px'}}>
+              {['Non-cooperative?','Highest altitude?','Lowest confidence?'].map(x=>(
+                <button key={x} onClick={()=>{setQ(x);ask(x);}}
+                  style={{background:'#1a2030',border:'1px solid #252d3d',color:'#888',padding:'3px 7px',borderRadius:'3px',cursor:'pointer',fontSize:'10px',fontFamily:'monospace'}}>{x}</button>
+              ))}
             </div>
-          </CardContent>
-        </Card>
+            {reply&&<div style={{marginTop:'10px',padding:'8px',background:'#3DDC9711',border:'1px solid #3DDC9733',borderRadius:'4px',fontSize:'11px',color:'#B0F0D0',lineHeight:'1.5',fontFamily:'monospace'}}>{reply}</div>}
+          </div>
 
-        <Card className="bg-card border-border">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Active Sensors</p>
-                <p className="text-2xl font-bold text-foreground font-mono">{stats.activeSensors}</p>
-              </div>
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <RadioGroup defaultValue="sensors" className="w-5 h-5 text-primary" />
-                </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card border-border">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Hedera Logs</p>
-                <p className="text-2xl font-bold text-foreground font-mono">{stats.hederaLogs}</p>
-              </div>
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <MapPin className="w-5 h-5 text-primary" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Map */}
-      <Card className="mb-6 bg-card border-border relative">
-        <CardHeader>
-          <CardTitle className="text-lg text-foreground">Live Aircraft Map</CardTitle>
-          <CardDescription>Real-time MLAT positions from Neuron sensor network</CardDescription>
-        </CardHeader>
-        <CardContent className="relative">
-          <AircraftMap 
-            positions={positions} 
-            sensors={sensors} 
-            onAircraftSelect={setSelectedAircraft}
-          />
-          <GhostIntelPanel
-            aircraft={selectedAircraft ? {
-              icao: selectedAircraft.icao_address || selectedAircraft.icao,
-              hasAdsb: selectedAircraft.has_adsb || true,
-              sensorCount: selectedAircraft.sensor_count || 5,
-              track: getDemoAircraftTrack(selectedAircraft.icao_address || selectedAircraft.icao) || getFallbackTrack()
-            } : null}
-            onClose={() => setSelectedAircraft(null)}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Recent Positions */}
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="text-lg text-foreground">Recent MLAT Solutions</CardTitle>
-          <CardDescription>Latest aircraft positions calculated via TDOA</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {positions.slice(0, 10).map((pos) => (
-              <div
-                key={pos.id}
-                className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <Plane className="w-4 h-4 text-primary" />
-                  <div>
-                    <p className="font-mono font-semibold text-foreground">{pos.icao_address}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {pos.latitude?.toFixed(4) || 'N/A'}, {pos.longitude?.toFixed(4) || 'N/A'}
-                    </p>
+          <div style={{flex:1,overflowY:'auto',padding:'8px'}}>
+            <div style={{color:'#444',fontSize:'10px',letterSpacing:'1px',marginBottom:'6px',padding:'0 4px'}}>TRACKED ({list.length})</div>
+            {list.map(ac=>{
+              const c=ac.color??(ac.cooperative?'#3DDC97':'#FF4444'),p=Math.round(ac.confidence*100),s=sel?.icao===ac.icao;
+              return(
+                <div key={ac.icao} onClick={()=>focus(ac)}
+                  style={{padding:'8px',marginBottom:'4px',background:s?'#1a2030':'#0D1117',border:`1px solid ${s?c+'55':'#1a2030'}`,borderRadius:'6px',cursor:'pointer'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'4px'}}>
+                    <span style={{color:c,fontSize:'12px',fontWeight:600,fontFamily:'monospace'}}>{ac.is_ghost&&<span style={{opacity:0.5}}>◌ </span>}{ac.icao}</span>
+                    <span style={{color:'#555',fontSize:'10px'}}>{ac.alt_ft.toLocaleString()}ft</span>
+                  </div>
+                  <div style={{height:'2px',background:'#1a2030',border-radius:'1px',overflow:hidden'}}>
+                    <div style={{height:'100%',width:`${p}%`,background:p>=85?'#3DDC97':p>=65?'#FFB020':'#FF4444'}}/>
+                  </div>
+                  <div style={{display:'flex',justifyContent:'space-between',marginTop:'3px'}}>
+                    <span style={{color:'#444',fontSize:'9px'}}>{ac.cooperative?'ADS-B':'MLAT'}</span>
+                    <span style={{color:'#555',fontSize:'9px',fontFamily:'monospace'}}>{p}%</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={pos.confidence_score && pos.confidence_score >= 85 ? 'default' : 'secondary'}>
-                    {pos.confidence_score?.toFixed(0)}% conf
-                  </Badge>
-                  <Badge variant="outline">
-                    {pos.sensor_count || 0} sensors
-                  </Badge>
-                  {pos.hedera_sequence_number && (
-                    <Badge variant="outline" className="font-mono text-xs">
-                      HCS #{pos.hedera_sequence_number}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-        </CardContent>
-      </Card>
+
+          <div style={{padding:'10px 12px',borderTop:'1px solid #1a2030',background:'#080B0F'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <div><div style={{color:'#7B8FFF',fontSize:'10px',fontFamily:'monospace'}}>0.0.7968510</div><div style={{color:'#444',fontSize:'9px'}}>Hedera Testnet · HCS</div></div>
+              <div style={{textAlign:'right'}}><div style={{color:'#3DDC97',fontSize:'10px',fontFamily:'monospace'}}>#{seq}</div><div style={{color:'#444',fontSize:'9px'}}>seq · live</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <style>{`.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:transparent!important;box-shadow:none!important;border:none!important;padding:0!important;}.leaflet-popup-content{margin:0!important;}.leaflet-popup-tip-container{display:none!important;}.leaflet-control-zoom a{background:#0D1117!important;color:#3DDC97!important;border-color:#1a2030!important;}`}</style>
     </div>
-    <HederaProofStrip />
-    </>
-  )
+  );
 }
