@@ -232,7 +232,7 @@ export default function MLATDashboard() {
               icao: selectedAircraft.icao_address || selectedAircraft.icao,
               hasAdsb: selectedAircraft.has_adsb || true,
               sensorCount: selectedAircraft.sensor_count || 5,
-              track: getDemoAircraftTrack(selectedAircraft.icao_address || selectedAircraft.icao)
+              track: getDemoAircraftTrack(selectedAircraft.icao_address || selectedAircraft.icao) || getFallbackTrack()
             } : null}
             onClose={() => setSelectedAircraft(null)}
           />
@@ -257,7 +257,7 @@ export default function MLATDashboard() {
                   <div>
                     <p className="font-mono font-semibold text-foreground">{pos.icao_address}</p>
                     <p className="text-xs text-muted-foreground">
-                      {pos.latitude.toFixed(4)}, {pos.longitude.toFixed(4)}
+                      {pos.latitude?.toFixed(4) || 'N/A'}, {pos.longitude?.toFixed(4) || 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -266,7 +266,7 @@ export default function MLATDashboard() {
                     {pos.confidence_score?.toFixed(0)}% conf
                   </Badge>
                   <Badge variant="outline">
-                    {pos.sensor_count} sensors
+                    {pos.sensor_count || 0} sensors
                   </Badge>
                   {pos.hedera_sequence_number && (
                     <Badge variant="outline" className="font-mono text-xs">

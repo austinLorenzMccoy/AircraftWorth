@@ -3,7 +3,8 @@
  */
 
 export interface AircraftPosition {
-  icao: string;
+  id: string;
+  icao_address: string;
   lat: number;
   lon: number;
   alt_ft?: number;
@@ -11,6 +12,7 @@ export interface AircraftPosition {
   calculated_at: string;
   has_adsb: boolean;
   sensor_count: number;
+  hedera_sequence_number?: number;
 }
 
 export interface Sensor {
@@ -23,24 +25,30 @@ export interface Sensor {
 
 export const demoAircraft: AircraftPosition[] = [
   {
+    id: '1',
     icao: 'ABC123',
+    icao_address: 'ABC123',
     lat: 51.5074,
     lon: -0.1278,
     alt_ft: 35000,
     confidence: 0.95,
     calculated_at: '2024-01-01T12:00:00Z',
     has_adsb: true,
-    sensor_count: 8
+    sensor_count: 5,
+    hedera_sequence_number: 123456789
   },
   {
+    id: '2',
     icao: 'DEF456',
+    icao_address: 'DEF456',
     lat: 51.5000,
     lon: -0.1200,
     alt_ft: 28000,
     confidence: 0.72,
     calculated_at: '2024-01-01T12:01:00Z',
     has_adsb: false,
-    sensor_count: 4
+    sensor_count: 4,
+    hedera_sequence_number: 987654321
   },
   {
     icao: 'GHI789',
@@ -185,4 +193,25 @@ export function getDemoAircraftTrack(icao: string) {
   }
   
   return track;
+}
+
+// Fallback track for unknown aircraft
+export function getFallbackTrack() {
+  const now = new Date();
+  return [
+    {
+      lat: 51.5074,
+      lon: -0.1278,
+      alt_ft: 35000,
+      confidence: 0.95,
+      timestamp_iso: now.toISOString()
+    },
+    {
+      lat: 51.5074 + (Math.random() - 0.5) * 0.01,
+      lon: -0.1278 + (Math.random() - 0.5) * 0.01,
+      alt_ft: 35000 + Math.floor((Math.random() - 0.5) * 1000),
+      confidence: Math.max(0.3, 0.95 + (Math.random() - 0.5) * 0.2),
+      timestamp_iso: new Date(now.getTime() - 30000).toISOString()
+    }
+  ];
 }
