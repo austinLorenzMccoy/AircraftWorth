@@ -16,11 +16,6 @@
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-// ─── Component ────────────────────────────────────────────────────────────────
-function OnboardingPage() {
-  const router       = useRouter();
-  const searchParams = useSearchParams();
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Step = 'wallet' | 'email' | 'check-email' | 'verifying' | 'enrolled' | 'error';
 
@@ -77,7 +72,7 @@ const PLANS = [
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function OnboardingPage() {
+function OnboardingContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
 
@@ -448,7 +443,7 @@ export default function OnboardingPage() {
 }
 
 // ─── Main Page Component with Suspense Boundary ───────────────────────────────
-export default function OnboardingWrapper() {
+export default function OnboardingPage() {
   return (
     <Suspense fallback={
       <div style={{
@@ -468,7 +463,7 @@ export default function OnboardingWrapper() {
         <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       </div>
     }>
-      <OnboardingPage />
+      <OnboardingContent />
     </Suspense>
   );
 }
