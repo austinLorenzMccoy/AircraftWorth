@@ -123,7 +123,30 @@ function OnboardingPage() {
     return () => clearInterval(intervalId);
   }, []);
 
-  // ── Connect wallet ───────────────────────────────────────────────────────────
+  // ── Connect wallet then go straight to /mlat ────────────────────────────────
+  const connectWalletAndEnter = useCallback(async () => {
+    const provider = getProvider();
+    if (!provider) {
+      setError('No wallet detected. Install MetaMask or use a Web3 browser.');
+      return;
+    }
+    try {
+      setError('');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const eth = provider as any;
+      const accounts: string[] = await eth.request({ method: 'eth_requestAccounts' });
+      const chainId: string    = await eth.request({ method: 'eth_chainId' });
+      if (!accounts.length) throw new Error('No accounts returned');
+      const providerName = eth.isMetaMask ? 'metamask' : eth.isCoinbaseWallet ? 'coinbase' : 'injected';
+      setWallet({ address: accounts[0], chainId, provider: providerName });
+      router.push('/mlat');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Wallet connection failed';
+      setError(msg.includes('rejected') ? 'Connection rejected. Please approve in your wallet.' : msg);
+    }
+  }, [router]);
+
+  // ── Connect wallet (for magic-link flow) ─────────────────────────────────────
   const connectWallet = useCallback(async () => {
     const provider = getProvider();
     if (!provider) {
@@ -230,23 +253,27 @@ function OnboardingPage() {
       {/* ── STEP: Connect Wallet ─────────────────────────────────────────────── */}
       {step === 'wallet' && (
         <div style={S.card}>
-          <div style={S.cardTitle}>Connect Your Wallet</div>
-          <div style={S.cardSub}>Start your subscription by connecting a Web3 wallet. Your wallet address links to your sensor data and flight track NFTs.</div>
+          <div style={S.cardTitle}>Get Started</div>
+          <div style={S.cardSub}>Connect your wallet for instant access, or subscribe with email for a full plan.</div>
 
-          <div style={{ display:'flex', flexDirection:'column', gap:'12px', marginTop:'24px' }}>
-            <button onClick={connectWallet} style={{ ...S.btn, ...S.btnPrimary }}>
+          {/* ── Primary: Wallet → direct entry ── */}
+          <div style={{ marginTop:'24px', marginBottom:'8px', fontSize:'11px', color:'#3DDC97', letterSpacing:'1px', fontWeight:600 }}>
+            INSTANT ACCESS
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
+            <button onClick={connectWalletAndEnter} style={{ ...S.btn, ...S.btnPrimary }}>
               <span style={{ fontSize:'20px' }}>🦊</span>
               <div style={{ textAlign:'left' }}>
-                <div style={{ fontWeight:600 }}>MetaMask</div>
-                <div style={{ fontSize:'11px', opacity:0.7 }}>Browser extension or mobile</div>
+                <div style={{ fontWeight:600 }}>Connect with MetaMask</div>
+                <div style={{ fontSize:'11px', opacity:0.7 }}>Wallet connected → go straight to dashboard</div>
               </div>
-              <span style={{ marginLeft:'auto', opacity:0.5 }}>→</span>
+              <span style={{ marginLeft:'auto', opacity:0.7 }}>→</span>
             </button>
 
-            <button onClick={connectWallet} style={{ ...S.btn, background:'#0D1117', border:'1px solid #1a2030', color:'#E6EAF0' }}>
+            <button onClick={connectWalletAndEnter} style={{ ...S.btn, background:'#0D1117', border:'1px solid #1a2030', color:'#E6EAF0' }}>
               <span style={{ fontSize:'20px' }}>🔵</span>
               <div style={{ textAlign:'left' }}>
-                <div style={{ fontWeight:600 }}>Coinbase Wallet</div>
+                <div style={{ fontWeight:600 }}>Connect with Coinbase Wallet</div>
                 <div style={{ fontSize:'11px', opacity:0.7 }}>Any injected EIP-1193 wallet</div>
               </div>
               <span style={{ marginLeft:'auto', opacity:0.5 }}>→</span>
@@ -254,17 +281,29 @@ function OnboardingPage() {
           </div>
 
           {!hasWallet && (
-            <div style={{ marginTop:'16px', padding:'10px 12px', background:'#FFB02011', border:'1px solid #FFB02033', borderRadius:'6px', fontSize:'12px', color:'#FFB020' }}>
+            <div style={{ marginTop:'12px', padding:'10px 12px', background:'#FFB02011', border:'1px solid #FFB02033', borderRadius:'6px', fontSize:'12px', color:'#FFB020' }}>
               ⚠ No wallet detected. <a href="https://metamask.io" target="_blank" rel="noreferrer" style={{ color:'#FFB020' }}>Install MetaMask</a> or open in a Web3 browser.
             </div>
           )}
 
           {error && <div style={S.errorBox}>{error}</div>}
 
+          {/* ── Divider ── */}
           <div style={S.divider}><span style={S.dividerText}>or</span></div>
 
-          <button onClick={() => setStep('email')} style={{ ...S.btn, background:'transparent', border:'1px solid #1a2030', color:'#888', fontSize:'12px' }}>
-            Continue without wallet (limited access)
+          {/* ── Secondary: Magic link subscription ── */}
+          <div style={{ marginBottom:'8px', fontSize:'11px', color:'#7B8FFF', letterSpacing:'1px', fontWeight:600 }}>
+            SUBSCRIBE WITH EMAIL
+          </div>
+          <button
+            onClick={() => setStep('email')}
+            style={{ ...S.btn, background:'#7B8FFF11', border:'1px solid #7B8FFF44', color:'#7B8FFF', justifyContent:'center', gap:'8px' }}
+          >
+            <span>✉</span>
+            <div style={{ textAlign:'left' }}>
+              <div style={{ fontWeight:600, fontSize:'13px' }}>Magic Link Onboarding</div>
+              <div style={{ fontSize:'11px', opacity:0.7 }}>Choose a plan · get a sign-in link by email</div>
+            </div>
           </button>
         </div>
       )}
