@@ -13,7 +13,7 @@
  * Magic-link token verification handled by /api/auth/verify route.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -91,12 +91,36 @@ export default function OnboardingPage() {
       setStep('verifying');
       verifyToken(token);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParams]);
+
+  // Verify magic link token
+  const verifyToken = async (token: string) => {
+    try {
+      const response = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+      const result = await response.json();
+      
+      if (result.valid) {
+        setStep('enrolled');
+      } else {
+        setError('Invalid or expired magic link');
+        setStep('error');
+      }
+    } catch (err) {
+      setError('Failed to verify magic link');
+      setStep('error');
+    }
+  };
 
   // Detect wallet availability
   useEffect(() => {
-    setHasWallet(!!getProvider());
+    const intervalId = setInterval(() => {
+      setHasWallet(!!getProvider());
+    }, 1000);
+    return () => clearInterval(intervalId);
   }, []);
 
   // ── Connect wallet ───────────────────────────────────────────────────────────
@@ -583,3 +607,26 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0 8px',
   },
 };
+
+// ─── Main Page Component with Suspense Boundary ───────────────────────
+const fallbackStyle = {
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  height: '100vh',
+  fontSize: '18px',
+  color: '#666',
+  background: '#f8f9fa',
+};
+
+export default function OnboardingWrapper() {
+  return (
+    <Suspense fallback={
+      <div style={fallbackStyle}>
+        Loading AircraftWorth...
+      </div>
+    }>
+      <OnboardingPage />
+    </Suspense>
+  );
+}
