@@ -77,7 +77,7 @@ const PLANS = [
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function OnboardingPage() {
+function OnboardingPage() {
   const router       = useRouter();
   const searchParams = useSearchParams();
 
@@ -607,6 +607,7 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '12px',
     margin: '20px 0',
     color: '#333',
+  },
     fontSize: '12px',
   },
   dividerText: {
@@ -614,3 +615,5 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0 8px',
   },
 };
+
+export default OnboardingPage;
