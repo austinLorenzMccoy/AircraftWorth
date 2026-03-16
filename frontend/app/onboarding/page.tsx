@@ -101,19 +101,13 @@ function OnboardingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token }),
       });
-
       const data = await res.json();
-
       if (!res.ok) throw new Error(data.error ?? 'Verification failed');
-
       if (data.walletAddress) {
         setWallet({ address: data.walletAddress, chainId: '0x1', provider: 'injected' });
       }
       if (data.email) setEmail(data.email);
-
       setStep('enrolled');
-
-      // Redirect to dashboard after 3s
       setTimeout(() => router.push('/mlat'), 3000);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Token verification failed');
@@ -318,6 +312,11 @@ function OnboardingPage() {
             ))}
           </div>
 
+          {/* Demo notice */}
+          <div style={{ margin:'16px 0 8px', padding:'10px 14px', background:'#FFB02011', border:'1px solid #FFB02044', borderRadius:'8px', fontSize:'12px', color:'#FFB020', lineHeight:'1.6' }}>
+            ⚠ <strong>Demo notice:</strong> During our hackathon demo period, magic links can only be delivered to <strong style={{ fontFamily:'monospace' }}>alphonsuschibueze10@gmail.com</strong> due to Resend free-tier restrictions. Enter that address below to experience the full onboarding flow.
+          </div>
+
           {/* Email input */}
           <div style={{ marginTop:'8px' }}>
             <div style={{ color:'#888', fontSize:'11px', marginBottom:'6px', letterSpacing:'1px' }}>EMAIL ADDRESS</div>
@@ -326,7 +325,7 @@ function OnboardingPage() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && sendMagicLink()}
-              placeholder="you@example.com"
+              placeholder="alphonsuschibueze10@gmail.com"
               style={{ ...S.input, marginBottom:'10px' }}
               autoFocus
             />
