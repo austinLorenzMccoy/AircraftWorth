@@ -63,7 +63,7 @@ export default function MLATPage(){
   const [aiQuery, setAiQuery] = useState('');
   const [aiResponse, setAiResponse] = useState<AIQueryResponse | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
-  const [showAI, setShowAI] = useState(false);
+  const [showAI, setShowAI] = useState(true); // Always show AI by default
 
   // Fetch real-time aircraft data using frontend service
   const fetchRealtimeAircraft = async () => {
@@ -183,24 +183,17 @@ export default function MLATPage(){
           <div style={{fontSize:10,color:'#3DDC97',marginTop:2}}>
             🚀 No Backend Required
           </div>
-          <button
-            onClick={() => setShowAI(!showAI)}
-            style={{
-              marginTop:8,padding:'4px 8px',background:'#FFB020',border:'none',
-              borderRadius:4,color:'#0D1117',fontSize:10,fontWeight:600,cursor:'pointer'
-            }}
-          >
-            🤖 {showAI ? 'Hide' : 'Show'} AI
-          </button>
+          <div style={{fontSize:10,color:'#FFB020',marginTop:2}}>
+            🤖 AI Always Active
+          </div>
         </div>
       </div>
       
       <div style={{width:380,background:'#161B22',borderLeft:'1px solid #30363d',display:'flex',flexDirection:'column'}}>
-        {showAI && (
-          <div style={{padding:16,borderBottom:'1px solid #30363d',background:'#0D1117'}}>
-            <div style={{fontSize:14,fontWeight:600,color:'#FFB020',marginBottom:8,display:'flex',alignItems:'center',gap:6}}>
-              🤖 AircraftWorth AI
-            </div>
+        <div style={{padding:16,borderBottom:'1px solid #30363d',background:'#0D1117'}}>
+          <div style={{fontSize:14,fontWeight:600,color:'#FFB020',marginBottom:8,display:'flex',alignItems:'center',gap:6}}>
+            🤖 AircraftWorth AI
+          </div>
             <textarea
               placeholder="Ask about aircraft, flight patterns, or air traffic..."
               value={aiQuery}
@@ -255,12 +248,10 @@ export default function MLATPage(){
                 </div>
               </div>
             )}
-          </div>
-        )}
         
         <div style={{padding:16,borderBottom:'1px solid #30363d'}}>
           <div style={{fontSize:18,fontWeight:600,color:'#E6EAF0',marginBottom:8}}>
-            {showAI ? 'Aircraft List' : 'AircraftWorth MLAT'}
+            Aircraft List
           </div>
           <input
             placeholder="Search ICAO or callsign..."
