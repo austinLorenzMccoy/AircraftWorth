@@ -325,18 +325,18 @@ export default function OnboardingPage() {
           {/* Email input */}
           <div style={{ marginTop:'8px' }}>
             <div style={{ color:'#888', fontSize:'11px', marginBottom:'6px', letterSpacing:'1px' }}>EMAIL ADDRESS</div>
-            <div style={{ display:'flex', gap:'10px' }}>
+            <div style={{ display:'flex', gap:'10px', alignItems:'center' }}>
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && sendMagicLink()}
                 placeholder="you@example.com"
-                style={S.input}
+                style={{ ...S.input, flex: 1, minWidth: '200px' }}
                 autoFocus
               />
               <button onClick={sendMagicLink} disabled={sending}
-                style={{ ...S.btn, ...S.btnPrimary, flexShrink:0, minWidth:'140px', justifyContent:'center' }}>
+                style={{ ...S.btn, ...S.btnPrimary, minWidth:'140px', height:'40px' }}>
                 {sending ? '⟳ Sending…' : '✉ Send Magic Link'}
               </button>
             </div>

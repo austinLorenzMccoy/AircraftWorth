@@ -3,8 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
 
-from routers import agent, evaluation, hedera
-from routers import mlat
+from routers import agent, evaluation, hedera, auth
+# from routers import mlat  # Temporarily disabled due to websockets conflict
 from api.intelligence import router as intelligence_router
 
 load_dotenv()
@@ -22,7 +22,8 @@ app.add_middleware(
 app.include_router(agent.router, prefix="/api/agent", tags=["agent"])
 app.include_router(evaluation.router, prefix="/api/evaluation", tags=["evaluation"])
 app.include_router(hedera.router, prefix="/api/hedera", tags=["hedera"])
-app.include_router(mlat.router, prefix="/api/mlat", tags=["mlat"])
+# app.include_router(mlat.router, prefix="/api/mlat", tags=["mlat"])  # Temporarily disabled
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(intelligence_router)
 
 @app.get("/")

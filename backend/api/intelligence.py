@@ -165,17 +165,37 @@ Return ONLY valid JSON:
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2, 
             max_tokens=500,
-            response_format={"type": "json_object"},
+            # response_format={"type": "json_object"},  # Temporarily disabled
         )
+        print(f"Groq raw response: {resp.choices[0].message.content}")
         data = json.loads(resp.choices[0].message.content)
         return QueryResponse(**data)
     except Exception as e:
         logger.error(f"Groq query failed: {e}")
+        print(f"Groq query error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return QueryResponse(
             answer="I'm having trouble processing that question right now.",
             sql_hint=None,
             aircraft_icaos=[]
         )
+
+@router.get("/test-groq")
+async def test_groq():
+    """Test Groq API directly"""
+    try:
+        from groq import Groq
+        import os
+        client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+        resp = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": "Hello"}],
+            max_tokens=10
+        )
+        return {"response": resp.choices[0].message.content}
+    except Exception as e:
+        return {"error": str(e)}
 
 # ── ENDPOINT C: Sensor Anomaly Diagnosis ─────────────────
 @router.post("/diagnose-sensor", response_model=SensorDiagResponse)
