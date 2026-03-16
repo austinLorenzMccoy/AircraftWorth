@@ -41,34 +41,50 @@ function shortAddress(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
-// ─── HashPack direct connection (browser extension) ──────────────────────────
-async function connectHashPackDirect(
+// ─── WalletConnect config ─────────────────────────────────────────────────────
+const WC_PROJECT_ID = 'b37ae237496a79a6899681d202da6990';
+const WC_APP_METADATA = {
+  name: 'AircraftWorth',
+  description: 'Distributed MLAT aircraft tracking on Hedera',
+  url: 'https://aircraft-worth.vercel.app',
+  icons: ['https://aircraft-worth.vercel.app/AircraftWorth-Icon.svg'],
+};
+
+// ─── HashPack via @hashgraph/hedera-wallet-connect ────────────────────────────
+async function connectHashPackViaWC(
   onSuccess: (accountId: string) => void,
   onError: (msg: string) => void
 ) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const w = window as any;
-
-  // HashPack injects window.hashpack
-  if (!w.hashpack) {
-    onError('INSTALL_REQUIRED');
-    return;
-  }
-
   try {
-    const result = await w.hashpack.connect({
-      network: 'testnet',
-      debug: false,
-    });
+    const { DAppConnector, HederaSessionEvent, HederaJsonRpcMethod, LedgerId } =
+      await import('@hashgraph/hedera-wallet-connect');
 
-    if (result?.accountIds?.length) {
-      onSuccess(result.accountIds[0]);
+    const connector = new DAppConnector(
+      WC_APP_METADATA,
+      LedgerId.TESTNET,
+      WC_PROJECT_ID,
+      Object.values(HederaJsonRpcMethod),
+      [HederaSessionEvent.ChainChanged, HederaSessionEvent.AccountsChanged],
+    );
+
+    await connector.init({ logger: 'error' });
+
+    // openModal handles QR code / HashPack deep link automatically
+    const session = await connector.openModal();
+
+    const accounts = session?.namespaces?.hedera?.accounts ?? [];
+    if (accounts.length) {
+      // format: "hedera:testnet:0.0.xxxxx"
+      const accountId = accounts[0].split(':')[2];
+      onSuccess(accountId);
     } else {
-      onError('No account returned from HashPack. Make sure you are logged in.');
+      onError('No Hedera account found. Make sure HashPack is unlocked on testnet.');
     }
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'HashPack connection failed';
-    if (msg.toLowerCase().includes('reject') || msg.toLowerCase().includes('cancel')) {
+    const msg = err instanceof Error ? err.message : 'Connection failed';
+    if (msg.toLowerCase().includes('reject') ||
+        msg.toLowerCase().includes('cancel') ||
+        msg.toLowerCase().includes('closed')) {
       onError('Connection cancelled.');
     } else {
       onError(msg);
@@ -211,10 +227,11 @@ function OnboardingPage() {
   }, [router]);
 
   // ── Connect via HashPack browser extension ────────────────────────────────────
+  // ── Connect via HashPack / Hedera WalletConnect ───────────────────────────────
   const connectHashPack = useCallback(async () => {
     setError('');
     setWcLoading(true);
-    await connectHashPackDirect(
+    await connectHashPackViaWC(
       (accountId) => {
         setWallet({ address: accountId, chainId: 'hedera:testnet', provider: 'hashpack', hederaAccountId: accountId });
         setWcLoading(false);
@@ -222,11 +239,7 @@ function OnboardingPage() {
       },
       (msg) => {
         setWcLoading(false);
-        if (msg === 'INSTALL_REQUIRED') {
-          setError('HashPack extension not detected. Install it at hashpack.app then refresh.');
-        } else {
-          setError(msg);
-        }
+        setError(msg);
       }
     );
   }, [router]);
@@ -328,7 +341,7 @@ function OnboardingPage() {
               <div style={{ textAlign:'left' }}>
                 <div style={{ fontWeight:600 }}>HashPack via WalletConnect</div>
                 <div style={{ fontSize:'11px', opacity:0.7 }}>
-                  {wcLoading ? 'Connecting to HashPack…' : 'HashPack browser extension → instant /mlat access'}
+                  {wcLoading ? 'Opening WalletConnect modal…' : 'HashPack · Blade · Kabila via WalletConnect'}
                 </div>
               </div>
               <span style={{ marginLeft:'auto', opacity:0.5 }}>{wcLoading ? '⟳' : '→'}</span>
