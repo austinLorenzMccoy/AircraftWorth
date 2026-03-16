@@ -16,13 +16,23 @@
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
+// ─── WalletConnect config ─────────────────────────────────────────────────────
+const WC_PROJECT_ID = 'b37ae237496a79a6899681d202da6990';
+const WC_METADATA = {
+  name: 'AircraftWorth',
+  description: 'Distributed MLAT aircraft tracking on Hedera',
+  url: typeof window !== 'undefined' ? window.location.origin : 'https://aircraft-worth.vercel.app',
+  icons: ['https://aircraft-worth.vercel.app/AircraftWorth-Icon.svg'],
+};
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Step = 'wallet' | 'email' | 'check-email' | 'verifying' | 'enrolled' | 'error';
 
 interface WalletState {
   address: string;
   chainId: string;
-  provider: 'metamask' | 'coinbase' | 'injected';
+  provider: 'metamask' | 'coinbase' | 'injected' | 'hashpack' | 'walletconnect';
+  hederaAccountId?: string;
 }
 
 // ─── Wallet detection helpers ─────────────────────────────────────────────────
@@ -38,6 +48,52 @@ function getProvider(): unknown {
 
 function shortAddress(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
+
+// ─── WalletConnect launcher ───────────────────────────────────────────────────
+async function launchWalletConnect(
+  onSuccess: (address: string, accountId?: string) => void,
+  onError: (msg: string) => void
+) {
+  try {
+    // Dynamically import to avoid SSR issues
+    const { DAppConnector, HederaSessionEvent, HederaJsonRpcMethod, LedgerId } =
+      await import('@hashgraph/hedera-wallet-connect');
+    const { WalletConnectModal } = await import('@walletconnect/modal');
+
+    const connector = new DAppConnector(
+      WC_METADATA,
+      LedgerId.TESTNET,
+      WC_PROJECT_ID,
+      Object.values(HederaJsonRpcMethod),
+      [HederaSessionEvent.ChainChanged, HederaSessionEvent.AccountsChanged],
+    );
+
+    await connector.init({ logger: 'error' });
+
+    const modal = new WalletConnectModal({
+      projectId: WC_PROJECT_ID,
+      chains: ['hedera:testnet'],
+    });
+
+    const session = await connector.openModal({ modal });
+
+    if (session?.namespaces?.hedera?.accounts?.length) {
+      const accountStr = session.namespaces.hedera.accounts[0]; // "hedera:testnet:0.0.xxxxx"
+      const accountId = accountStr.split(':')[2];
+      onSuccess(accountId, accountId);
+    } else {
+      onError('No Hedera account found in session.');
+    }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'WalletConnect failed';
+    if (msg.includes('User rejected') || msg.includes('closed')) {
+      onError('Connection cancelled.');
+    } else {
+      // Library not installed — show install instructions
+      onError('INSTALL_REQUIRED');
+    }
+  }
 }
 
 // ─── Plan options ─────────────────────────────────────────────────────────────
@@ -83,6 +139,7 @@ function OnboardingPage() {
   const [error,      setError]      = useState('');
   const [sending,    setSending]    = useState(false);
   const [hasWallet,  setHasWallet]  = useState(false);
+  const [wcLoading,  setWcLoading]  = useState(false);
 
   // Check if a magic-link token is in the URL
   useEffect(() => {
@@ -123,30 +180,7 @@ function OnboardingPage() {
     return () => clearInterval(intervalId);
   }, []);
 
-  // ── Connect wallet then go straight to /mlat ────────────────────────────────
-  const connectWalletAndEnter = useCallback(async () => {
-    const provider = getProvider();
-    if (!provider) {
-      setError('No wallet detected. Install MetaMask or use a Web3 browser.');
-      return;
-    }
-    try {
-      setError('');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const eth = provider as any;
-      const accounts: string[] = await eth.request({ method: 'eth_requestAccounts' });
-      const chainId: string    = await eth.request({ method: 'eth_chainId' });
-      if (!accounts.length) throw new Error('No accounts returned');
-      const providerName = eth.isMetaMask ? 'metamask' : eth.isCoinbaseWallet ? 'coinbase' : 'injected';
-      setWallet({ address: accounts[0], chainId, provider: providerName });
-      router.push('/mlat');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Wallet connection failed';
-      setError(msg.includes('rejected') ? 'Connection rejected. Please approve in your wallet.' : msg);
-    }
-  }, [router]);
-
-  // ── Connect wallet (for magic-link flow) ─────────────────────────────────────
+  // ── Connect wallet ───────────────────────────────────────────────────────────
   const connectWallet = useCallback(async () => {
     const provider = getProvider();
     if (!provider) {
@@ -172,6 +206,50 @@ function OnboardingPage() {
       setError(msg.includes('rejected') ? 'Connection rejected. Please approve in your wallet.' : msg);
     }
   }, []);
+
+  // ── Connect wallet then go straight to /mlat (MetaMask path) ────────────────
+  const connectWalletAndEnter = useCallback(async () => {
+    const provider = getProvider();
+    if (!provider) {
+      setError('No wallet detected. Install MetaMask or use a Web3 browser.');
+      return;
+    }
+    try {
+      setError('');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const eth = provider as any;
+      const accounts: string[] = await eth.request({ method: 'eth_requestAccounts' });
+      const chainId: string    = await eth.request({ method: 'eth_chainId' });
+      if (!accounts.length) throw new Error('No accounts returned');
+      const providerName = eth.isMetaMask ? 'metamask' : eth.isCoinbaseWallet ? 'coinbase' : 'injected';
+      setWallet({ address: accounts[0], chainId, provider: providerName });
+      router.push('/mlat');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Wallet connection failed';
+      setError(msg.includes('rejected') ? 'Connection rejected. Please approve in your wallet.' : msg);
+    }
+  }, [router]);
+
+  // ── Connect via HashPack / Hedera WalletConnect ───────────────────────────────
+  const connectHashPack = useCallback(async () => {
+    setError('');
+    setWcLoading(true);
+    await launchWalletConnect(
+      (address, accountId) => {
+        setWallet({ address, chainId: 'hedera:testnet', provider: 'hashpack', hederaAccountId: accountId });
+        setWcLoading(false);
+        router.push('/mlat');
+      },
+      (msg) => {
+        setWcLoading(false);
+        if (msg === 'INSTALL_REQUIRED') {
+          setError('WalletConnect packages not installed. Run: pnpm add @hashgraph/hedera-wallet-connect @walletconnect/modal');
+        } else {
+          setError(msg);
+        }
+      }
+    );
+  }, [router]);
 
   // ── Send magic-link ──────────────────────────────────────────────────────────
   const sendMagicLink = useCallback(async () => {
@@ -256,24 +334,47 @@ function OnboardingPage() {
           <div style={S.cardTitle}>Get Started</div>
           <div style={S.cardSub}>Connect your wallet for instant access, or subscribe with email for a full plan.</div>
 
-          {/* ── Primary: Wallet → direct entry ── */}
-          <div style={{ marginTop:'24px', marginBottom:'8px', fontSize:'11px', color:'#3DDC97', letterSpacing:'1px', fontWeight:600 }}>
-            INSTANT ACCESS
+          {/* ── Hedera Native (HashPack / WalletConnect) ── */}
+          <div style={{ marginTop:'24px', marginBottom:'8px', fontSize:'10px', color:'#8259EF', letterSpacing:'1.5px', fontWeight:700 }}>
+            HEDERA NATIVE
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
+            <button
+              onClick={connectHashPack}
+              disabled={wcLoading}
+              style={{ ...S.btn, background:'#8259EF22', border:'1px solid #8259EF66', color:'#E6EAF0', opacity: wcLoading ? 0.7 : 1 }}
+            >
+              <span style={{ fontSize:'20px' }}>🟣</span>
+              <div style={{ textAlign:'left' }}>
+                <div style={{ fontWeight:600 }}>HashPack via WalletConnect</div>
+                <div style={{ fontSize:'11px', opacity:0.7 }}>
+                  {wcLoading ? 'Opening WalletConnect modal…' : 'HashPack · Blade · Kabila — instant /mlat access'}
+                </div>
+              </div>
+              <span style={{ marginLeft:'auto', opacity:0.5 }}>{wcLoading ? '⟳' : '→'}</span>
+            </button>
+          </div>
+
+          {/* ── Divider ── */}
+          <div style={S.divider}><span style={S.dividerText}>or</span></div>
+
+          {/* ── EVM wallet (MetaMask) ── */}
+          <div style={{ marginBottom:'8px', fontSize:'10px', color:'#3DDC97', letterSpacing:'1.5px', fontWeight:700 }}>
+            EVM WALLET
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
             <button onClick={connectWalletAndEnter} style={{ ...S.btn, ...S.btnPrimary }}>
               <span style={{ fontSize:'20px' }}>🦊</span>
               <div style={{ textAlign:'left' }}>
                 <div style={{ fontWeight:600 }}>Connect with MetaMask</div>
-                <div style={{ fontSize:'11px', opacity:0.7 }}>Wallet connected → go straight to dashboard</div>
+                <div style={{ fontSize:'11px', opacity:0.7 }}>Connects wallet → goes straight to dashboard</div>
               </div>
               <span style={{ marginLeft:'auto', opacity:0.7 }}>→</span>
             </button>
-
             <button onClick={connectWalletAndEnter} style={{ ...S.btn, background:'#0D1117', border:'1px solid #1a2030', color:'#E6EAF0' }}>
               <span style={{ fontSize:'20px' }}>🔵</span>
               <div style={{ textAlign:'left' }}>
-                <div style={{ fontWeight:600 }}>Connect with Coinbase Wallet</div>
+                <div style={{ fontWeight:600 }}>Coinbase Wallet</div>
                 <div style={{ fontSize:'11px', opacity:0.7 }}>Any injected EIP-1193 wallet</div>
               </div>
               <span style={{ marginLeft:'auto', opacity:0.5 }}>→</span>
@@ -282,7 +383,7 @@ function OnboardingPage() {
 
           {!hasWallet && (
             <div style={{ marginTop:'12px', padding:'10px 12px', background:'#FFB02011', border:'1px solid #FFB02033', borderRadius:'6px', fontSize:'12px', color:'#FFB020' }}>
-              ⚠ No wallet detected. <a href="https://metamask.io" target="_blank" rel="noreferrer" style={{ color:'#FFB020' }}>Install MetaMask</a> or open in a Web3 browser.
+              ⚠ No EVM wallet detected. <a href="https://metamask.io" target="_blank" rel="noreferrer" style={{ color:'#FFB020' }}>Install MetaMask</a> or use HashPack above.
             </div>
           )}
 
@@ -291,8 +392,8 @@ function OnboardingPage() {
           {/* ── Divider ── */}
           <div style={S.divider}><span style={S.dividerText}>or</span></div>
 
-          {/* ── Secondary: Magic link subscription ── */}
-          <div style={{ marginBottom:'8px', fontSize:'11px', color:'#7B8FFF', letterSpacing:'1px', fontWeight:600 }}>
+          {/* ── Magic link subscription ── */}
+          <div style={{ marginBottom:'8px', fontSize:'10px', color:'#7B8FFF', letterSpacing:'1.5px', fontWeight:700 }}>
             SUBSCRIBE WITH EMAIL
           </div>
           <button
@@ -435,7 +536,9 @@ function OnboardingPage() {
             <div style={{ ...S.cardTitle, color:'#3DDC97' }}>You're enrolled!</div>
             <div style={S.cardSub}>
               Subscription activated for <strong style={{ color:'#E6EAF0' }}>{email}</strong>
-              {wallet && <><br/><span style={{ fontFamily:'monospace', color:'#888', fontSize:'12px' }}>{shortAddress(wallet.address)}</span></>}
+              {wallet && <><br/><span style={{ fontFamily:'monospace', color:'#888', fontSize:'12px' }}>
+                {wallet.hederaAccountId ? `Hedera: ${wallet.hederaAccountId}` : shortAddress(wallet.address)}
+              </span></>}
             </div>
 
             <div style={{ margin:'20px 0', padding:'12px', background:'#3DDC9711', border:'1px solid #3DDC9733', borderRadius:'8px', fontSize:'12px', color:'#3DDC97' }}>

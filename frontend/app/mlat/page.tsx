@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { getLondonFlights, getFlightStats, Aircraft } from '../../lib/flight_tracking';
 import { queryAircraftAI, analyzeAirTraffic, AIQueryResponse } from '../../lib/ai_service';
 
@@ -41,6 +41,46 @@ function mark(L:any,map:any,ac:Aircraft){
   m.bindPopup(popup(ac));
   m.addTo(map);
   return m;
+}
+
+// ─── Markdown renderer ────────────────────────────────────────────────────────
+function renderInline(text: string): React.ReactNode {
+  const parts = text.split(/\*\*(.*?)\*\*/g);
+  return parts.map((part, i) =>
+    i % 2 === 1
+      ? <strong key={i} style={{color:'#E6EAF0',fontWeight:600}}>{part}</strong>
+      : <span key={i}>{part}</span>
+  );
+}
+
+function renderMarkdown(text: string) {
+  return text.split('\n').map((line, i) => {
+    if (!line.trim()) return <div key={i} style={{height:'5px'}} />;
+
+    const numbered = line.match(/^(\d+)\.\s+(.*)$/);
+    if (numbered) return (
+      <div key={i} style={{display:'flex',gap:'6px',margin:'3px 0',paddingLeft:'4px'}}>
+        <span style={{color:'#FFB020',flexShrink:0,fontWeight:600}}>{numbered[1]}.</span>
+        <span>{renderInline(numbered[2])}</span>
+      </div>
+    );
+
+    const bullet = line.match(/^[\t\s]*[\*\-]\s+(.*)$/);
+    if (bullet) return (
+      <div key={i} style={{display:'flex',gap:'6px',margin:'2px 0',paddingLeft: line.startsWith('\t') ? '20px' : '8px'}}>
+        <span style={{color:'#3DDC97',flexShrink:0}}>·</span>
+        <span>{renderInline(bullet[1])}</span>
+      </div>
+    );
+
+    if (/^\*\*[^*]+\*\*\s*$/.test(line)) return (
+      <div key={i} style={{color:'#FFB020',fontWeight:700,fontSize:12,margin:'8px 0 2px'}}>
+        {line.replace(/\*\*/g,'')}
+      </div>
+    );
+
+    return <div key={i} style={{margin:'1px 0'}}>{renderInline(line)}</div>;
+  });
 }
 
 export default function MLATPage(){
@@ -242,7 +282,7 @@ export default function MLATPage(){
                   {aiResponse.processing_time}ms · {Math.round(aiResponse.confidence * 100)}% conf
                 </span>
               </div>
-              <div style={{color:'#E6EAF0',whiteSpace:'pre-wrap'}}>{aiResponse.response}</div>
+              <div style={{color:'#E6EAF0',fontSize:11,lineHeight:'1.6'}}>{renderMarkdown(aiResponse.response)}</div>
             </div>
           )}
           {(aiResponse || aiQuery) && (
