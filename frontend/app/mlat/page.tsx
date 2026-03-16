@@ -191,72 +191,69 @@ export default function MLATPage(){
       
       <div style={{width:380,background:'#161B22',borderLeft:'1px solid #30363d',display:'flex',flexDirection:'column',overflow:'hidden'}}>
 
-        {/* ── AI Panel (always visible, fixed height) ── */}
-        <div style={{flexShrink:0,borderBottom:'2px solid #30363d',background:'#0D1117'}}>
-          <div style={{padding:'12px 16px 0',fontSize:14,fontWeight:600,color:'#FFB020',display:'flex',alignItems:'center',gap:6}}>
+        {/* AI Panel — always visible */}
+        <div style={{flexShrink:0,borderBottom:'2px solid #30363d',background:'#0D1117',padding:'12px 16px 14px'}}>
+          <div style={{fontSize:14,fontWeight:600,color:'#FFB020',marginBottom:8,display:'flex',alignItems:'center',gap:6}}>
             🤖 AircraftWorth AI
           </div>
-          <div style={{padding:'10px 16px 14px'}}>
-            <textarea
-              placeholder="Ask about aircraft, flight patterns, or air traffic..."
-              value={aiQuery}
-              onChange={e => setAiQuery(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleAIQuery())}
+          <textarea
+            placeholder="Ask about aircraft, flight patterns, or air traffic..."
+            value={aiQuery}
+            onChange={e => setAiQuery(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleAIQuery())}
+            style={{
+              width:'100%',minHeight:'56px',padding:'8px',background:'#161B22',border:'1px solid #30363d',
+              borderRadius:6,color:'#E6EAF0',fontSize:12,outline:'none',resize:'none',
+              fontFamily:'system-ui,sans-serif'
+            }}
+          />
+          <div style={{display:'flex',gap:8,marginTop:8}}>
+            <button
+              onClick={handleAIQuery}
+              disabled={aiLoading || !aiQuery.trim()}
               style={{
-                width:'100%',minHeight:'56px',padding:'8px',background:'#161B22',border:'1px solid #30363d',
-                borderRadius:6,color:'#E6EAF0',fontSize:12,outline:'none',resize:'none',
-                fontFamily:'system-ui,sans-serif'
+                flex:1,padding:'7px',background:'#FFB020',border:'none',
+                borderRadius:6,color:'#0D1117',fontWeight:600,
+                cursor:(aiLoading || !aiQuery.trim()) ? 'not-allowed' : 'pointer',
+                fontSize:12,opacity:(aiLoading || !aiQuery.trim()) ? 0.6 : 1
               }}
-            />
-            <div style={{display:'flex',gap:8,marginTop:8}}>
-              <button
-                onClick={handleAIQuery}
-                disabled={aiLoading || !aiQuery.trim()}
-                style={{
-                  flex:1,padding:'7px',background:'#FFB020',border:'none',
-                  borderRadius:6,color:'#0D1117',fontWeight:600,cursor:(aiLoading || !aiQuery.trim())?'not-allowed':'pointer',
-                  fontSize:12,opacity:(aiLoading || !aiQuery.trim())?0.6:1
-                }}
-              >
-                {aiLoading ? '🤔 Thinking...' : '🚀 Query AI'}
-              </button>
-              <button
-                onClick={handleQuickAnalysis}
-                disabled={aiLoading}
-                style={{
-                  padding:'7px 12px',background:'#3DDC97',border:'none',
-                  borderRadius:6,color:'#0D1117',fontWeight:600,cursor:aiLoading?'not-allowed':'pointer',
-                  fontSize:12,opacity:aiLoading?0.6:1
-                }}
-              >
-                📊 Analyse
-              </button>
-            </div>
-
-            {aiResponse && (
-              <div style={{
-                marginTop:10,padding:10,background:'#161B22',border:'1px solid #FFB02044',
-                borderRadius:6,fontSize:11,color:'#E6EAF0',lineHeight:'1.5',
-                maxHeight:140,overflowY:'auto'
-              }}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
-                  <span style={{color:'#FFB020',fontWeight:600,fontSize:10}}>🤖 AI Response</span>
-                  <span style={{color:'#666',fontSize:9}}>
-                    {aiResponse.processing_time}ms · {Math.round(aiResponse.confidence * 100)}% conf
-                  </span>
-                </div>
-                <div style={{color:'#E6EAF0',whiteSpace:'pre-wrap'}}>{aiResponse.response}</div>
-              </div>
-            )}
+            >
+              {aiLoading ? '🤔 Thinking...' : '🚀 Query AI'}
+            </button>
+            <button
+              onClick={handleQuickAnalysis}
+              disabled={aiLoading}
+              style={{
+                padding:'7px 12px',background:'#3DDC97',border:'none',
+                borderRadius:6,color:'#0D1117',fontWeight:600,
+                cursor:aiLoading ? 'not-allowed' : 'pointer',
+                fontSize:12,opacity:aiLoading ? 0.6 : 1
+              }}
+            >
+              📊 Analyse
+            </button>
           </div>
+          {aiResponse && (
+            <div style={{
+              marginTop:10,padding:10,background:'#161B22',border:'1px solid #FFB02044',
+              borderRadius:6,fontSize:11,color:'#E6EAF0',lineHeight:'1.5',
+              maxHeight:130,overflowY:'auto'
+            }}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+                <span style={{color:'#FFB020',fontWeight:600,fontSize:10}}>🤖 AI Response</span>
+                <span style={{color:'#666',fontSize:9}}>
+                  {aiResponse.processing_time}ms · {Math.round(aiResponse.confidence * 100)}% conf
+                </span>
+              </div>
+              <div style={{color:'#E6EAF0',whiteSpace:'pre-wrap'}}>{aiResponse.response}</div>
+            </div>
+          )}
         </div>
 
-        {/* ── Aircraft List (fills remaining space, scrollable) ── */}
+        {/* Aircraft List — fills remaining space */}
         <div style={{display:'flex',flexDirection:'column',flex:1,minHeight:0}}>
           <div style={{flexShrink:0,padding:'12px 16px',borderBottom:'1px solid #30363d',background:'#0D1117'}}>
-            <div style={{fontSize:14,fontWeight:600,color:'#E6EAF0',marginBottom:8}}>
-              ✈️ Aircraft List
-            </div>
+            <div style={{fontSize:14,fontWeight:600,color:'#E6EAF0',marginBottom:8}}>✈️ Aircraft List</div>
             <input
               placeholder="Search ICAO or callsign..."
               value={q}
@@ -279,29 +276,34 @@ export default function MLATPage(){
                   key={a.icao}
                   onClick={()=>setSel(a)}
                   style={{
-                    background:sel?.icao===a.icao?'#1C2128':'transparent',
-                    border:`1px solid ${sel?.icao===a.icao?(a.color??'#3DDC97'):'#30363d'}`,
-                    borderRadius:8,padding:12,marginBottom:8,cursor:'pointer',
-                    transition:'all 0.2s'
+                    background:sel?.icao===a.icao ? '#1C2128' : 'transparent',
+                    border:`1px solid ${sel?.icao===a.icao ? (a.color??'#3DDC97') : '#30363d'}`,
+                    borderRadius:8,padding:12,marginBottom:8,cursor:'pointer',transition:'all 0.2s'
                   }}
                 >
                   <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
                     <span style={{
                       background:(a.color??'#3DDC97')+'22',color:(a.color??'#3DDC97'),
-                      border:`1px solid ${(a.color??'#3DDC97')}55`,padding:'2px 8px',
-                      borderRadius:4,fontSize:10,fontWeight:'bold'
+                      border:`1px solid ${(a.color??'#3DDC97')}55`,
+                      padding:'2px 8px',borderRadius:4,fontSize:10,fontWeight:'bold'
                     }}>
-                      {a.cooperative?'● ADS-B':'◌ MLAT'}
+                      {a.cooperative ? '● ADS-B' : '◌ MLAT'}
                     </span>
                     {a.type && <span style={{color:'#666',fontSize:10}}>{a.type}</span>}
                   </div>
                   <div style={{fontSize:15,fontWeight:600,color:(a.color??'#3DDC97'),marginBottom:4}}>
-                    {a.icao}{a.callsign?` · ${a.callsign}`:''}
+                    {a.icao}{a.callsign ? ` · ${a.callsign}` : ''}
                   </div>
                   <div style={{display:'grid',gridTemplateColumns:'auto 1fr',gap:'2px 8px',fontSize:11,color:'#888'}}>
                     <span>ALT</span><span>{a.alt_ft.toLocaleString()} ft</span>
                     {a.speed_kts && <><span>SPD</span><span>{a.speed_kts} kts</span></>}
-                    <span>CONF</span><span style={{color:Math.round(a.confidence*100)>=85?'#3DDC97':Math.round(a.confidence*100)>=65?'#FFB020':'#FF4444'}}>{Math.round(a.confidence*100)}%</span>
+                  <span>CONF</span>
+                  <span style={{color:
+                    Math.round(a.confidence*100) >= 85 ? '#3DDC97' :
+                    Math.round(a.confidence*100) >= 65 ? '#FFB020' : '#FF4444'
+                  }}>
+                    {Math.round(a.confidence*100)}%
+                  </span>
                   </div>
                   {a.origin_country && (
                     <div style={{fontSize:10,color:'#666',marginTop:4}}>🌍 {a.origin_country}</div>
@@ -320,16 +322,15 @@ export default function MLATPage(){
               disabled={loading}
               style={{
                 width:'100%',padding:'8px',background:'#3DDC97',border:'none',
-                borderRadius:6,color:'#0D1117',fontWeight:600,cursor:loading?'not-allowed':'pointer',
-                fontSize:13
+                borderRadius:6,color:'#0D1117',fontWeight:600,
+                cursor:loading ? 'not-allowed' : 'pointer',fontSize:13
               }}
             >
-              {loading?'🔄 Refreshing...':'🔄 Refresh Now'}
+              {loading ? '🔄 Refreshing...' : '🔄 Refresh Now'}
             </button>
           </div>
         </div>
 
-        </div>
       </div>
     </div>
   );
