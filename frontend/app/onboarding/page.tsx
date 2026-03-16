@@ -16,15 +16,6 @@
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-// ─── WalletConnect config ─────────────────────────────────────────────────────
-const WC_PROJECT_ID = 'b37ae237496a79a6899681d202da6990';
-const WC_METADATA = {
-  name: 'AircraftWorth',
-  description: 'Distributed MLAT aircraft tracking on Hedera',
-  url: typeof window !== 'undefined' ? window.location.origin : 'https://aircraft-worth.vercel.app',
-  icons: ['https://aircraft-worth.vercel.app/AircraftWorth-Icon.svg'],
-};
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Step = 'wallet' | 'email' | 'check-email' | 'verifying' | 'enrolled' | 'error';
 
@@ -50,48 +41,37 @@ function shortAddress(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
-// ─── WalletConnect launcher ───────────────────────────────────────────────────
-async function launchWalletConnect(
-  onSuccess: (address: string, accountId?: string) => void,
+// ─── HashPack direct connection (browser extension) ──────────────────────────
+async function connectHashPackDirect(
+  onSuccess: (accountId: string) => void,
   onError: (msg: string) => void
 ) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const w = window as any;
+
+  // HashPack injects window.hashpack
+  if (!w.hashpack) {
+    onError('INSTALL_REQUIRED');
+    return;
+  }
+
   try {
-    // Dynamically import to avoid SSR issues
-    const { DAppConnector, HederaSessionEvent, HederaJsonRpcMethod, LedgerId } =
-      await import('@hashgraph/hedera-wallet-connect');
-    const { WalletConnectModal } = await import('@walletconnect/modal');
-
-    const connector = new DAppConnector(
-      WC_METADATA,
-      LedgerId.TESTNET,
-      WC_PROJECT_ID,
-      Object.values(HederaJsonRpcMethod),
-      [HederaSessionEvent.ChainChanged, HederaSessionEvent.AccountsChanged],
-    );
-
-    await connector.init({ logger: 'error' });
-
-    const modal = new WalletConnectModal({
-      projectId: WC_PROJECT_ID,
-      chains: ['hedera:testnet'],
+    const result = await w.hashpack.connect({
+      network: 'testnet',
+      debug: false,
     });
 
-    const session = await connector.openModal({ modal });
-
-    if (session?.namespaces?.hedera?.accounts?.length) {
-      const accountStr = session.namespaces.hedera.accounts[0]; // "hedera:testnet:0.0.xxxxx"
-      const accountId = accountStr.split(':')[2];
-      onSuccess(accountId, accountId);
+    if (result?.accountIds?.length) {
+      onSuccess(result.accountIds[0]);
     } else {
-      onError('No Hedera account found in session.');
+      onError('No account returned from HashPack. Make sure you are logged in.');
     }
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'WalletConnect failed';
-    if (msg.includes('User rejected') || msg.includes('closed')) {
+    const msg = err instanceof Error ? err.message : 'HashPack connection failed';
+    if (msg.toLowerCase().includes('reject') || msg.toLowerCase().includes('cancel')) {
       onError('Connection cancelled.');
     } else {
-      // Library not installed — show install instructions
-      onError('INSTALL_REQUIRED');
+      onError(msg);
     }
   }
 }
@@ -230,20 +210,20 @@ function OnboardingPage() {
     }
   }, [router]);
 
-  // ── Connect via HashPack / Hedera WalletConnect ───────────────────────────────
+  // ── Connect via HashPack browser extension ────────────────────────────────────
   const connectHashPack = useCallback(async () => {
     setError('');
     setWcLoading(true);
-    await launchWalletConnect(
-      (address, accountId) => {
-        setWallet({ address, chainId: 'hedera:testnet', provider: 'hashpack', hederaAccountId: accountId });
+    await connectHashPackDirect(
+      (accountId) => {
+        setWallet({ address: accountId, chainId: 'hedera:testnet', provider: 'hashpack', hederaAccountId: accountId });
         setWcLoading(false);
         router.push('/mlat');
       },
       (msg) => {
         setWcLoading(false);
         if (msg === 'INSTALL_REQUIRED') {
-          setError('WalletConnect packages not installed. Run: pnpm add @hashgraph/hedera-wallet-connect @walletconnect/modal');
+          setError('HashPack extension not detected. Install it at hashpack.app then refresh.');
         } else {
           setError(msg);
         }
@@ -348,7 +328,7 @@ function OnboardingPage() {
               <div style={{ textAlign:'left' }}>
                 <div style={{ fontWeight:600 }}>HashPack via WalletConnect</div>
                 <div style={{ fontSize:'11px', opacity:0.7 }}>
-                  {wcLoading ? 'Opening WalletConnect modal…' : 'HashPack · Blade · Kabila — instant /mlat access'}
+                  {wcLoading ? 'Connecting to HashPack…' : 'HashPack browser extension → instant /mlat access'}
                 </div>
               </div>
               <span style={{ marginLeft:'auto', opacity:0.5 }}>{wcLoading ? '⟳' : '→'}</span>
