@@ -1,188 +1,165 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from 'react'
-import { MapPin, Activity } from 'lucide-react'
-import { SensorOffering } from '@/types/marketplace'
+import { useState, useEffect } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import L from 'leaflet'
 
-// AircraftWorth sensor locations
-const aircraftSensorLocations = [
-  { id: 'sensor-001', name: 'London Heathrow MLAT', lat: 51.4700, lng: -0.4543, status: 'active' },
-  { id: 'sensor-002', name: 'New York JFK MLAT', lat: 40.6413, lng: -73.7781, status: 'active' },
-  { id: 'sensor-003', name: 'Los Angeles International MLAT', lat: 33.9425, lng: -118.4081, status: 'active' },
-]
+// ── Types ────────────────────────────────────────────────────────────
+interface SensorOffering {
+  id: string
+  sensor_id: string
+  data_type: 'raw_modes' | 'mlat_positions' | 'both'
+  pricing_model: 'per_message' | 'per_minute' | 'per_hour' | 'per_day' | 'per_month' | 'bundle'
+  price_amount: number
+  token_id: string
+  bundle_size?: number
+  is_active: boolean
+  sensor_name?: string
+  sensor_location?: { coordinates: [number, number] }
+}
+
+interface MarketSensor {
+  id: string
+  name: string
+  location: { coordinates: [number, number] }
+  last_heartbeat?: string
+  offerings_count: number
+  min_price?: number
+  active_offerings: SensorOffering[]
+}
 
 interface SensorMarketMapProps {
   onPurchase: (offering: SensorOffering) => void
 }
 
+// ── Sensor marker icon ────────────────────────────────────────────────
+const sensorIcon = L.divIcon({
+  className: '',
+  html: `
+    <div style="
+      width: 22px; height: 22px; border-radius: 50%;
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      border: 2.5px solid #ffffff;
+      box-shadow: 0 2px 10px rgba(99,102,241,0.5);
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: bold; font-size: 10px;
+    ">S</div>
+  `,
+  iconSize: [22, 22],
+  iconAnchor: [11, 11],
+})
+
+// ── Component ───────────────────────────────────────────────────────────────
 export default function SensorMarketMap({ onPurchase }: SensorMarketMapProps) {
-  const [selectedSensor, setSelectedSensor] = useState<string | null>(null)
+  const [sensors, setSensors] = useState<MarketSensor[]>([])
+  const [selectedSensor, setSelectedSensor] = useState<MarketSensor | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Initialize map (client-side only)
-    const mapScript = document.createElement('script')
-    mapScript.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
-    mapScript.async = true
-    
-    const linkScript = document.createElement('link')
-    linkScript.rel = 'stylesheet'
-    linkScript.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
-    
-    document.head.appendChild(linkScript)
-    document.head.appendChild(mapScript)
-    
-    mapScript.onload = () => {
-      // @ts-ignore - Leaflet global
-      const L = window.L
-      
-      const map = L.map('sensor-map').setView([51.0, 0.0], 2)
-      
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: ' OpenStreetMap contributors'
-      }).addTo(map)
-      
-      // Add sensor markers
-      aircraftSensorLocations.forEach(sensor => {
-        const color = sensor.status === 'active' ? '#10b981' : '#ef4444'
-        const marker = L.circleMarker([sensor.lat, sensor.lng], {
-          radius: 50000, // 50km coverage radius
-          fillColor: color,
-          color: color,
-          weight: 2,
-          opacity: 0.6
-        }).addTo(map)
-        
-        marker.bindPopup(`
-          <div style="font-family: system-ui, -apple-system, sans-serif;">
-            <h3 style="margin: 0 0 8px 0; color: #1f2937;">${sensor.name}</h3>
-            <p style="margin: 0; color: #6b7280; font-size: 14px;">${sensor.location}</p>
-            <p style="margin: 4px 0 0 0;">
-              <strong>Status:</strong> 
-              <span style="color: ${sensor.status === 'active' ? '#10b981' : '#ef4444'}">
-                ${sensor.status.toUpperCase()}
-              </span>
-            </p>
-          </div>
-        `)
-        
-        marker.on('click', () => {
-          setSelectedSensor(sensor.id)
-        })
-      })
-    }
+    fetchSensors()
   }, [])
+
+  const fetchSensors = async () => {
+    try {
+      const response = await fetch('/api/marketplace/sensors')
+      if (!response.ok) throw new Error('Failed to fetch sensors')
+      
+      const data = await response.json()
+      setSensors(data)
+    } catch (error) {
+      console.error('Error fetching sensors:', error)
+      setError('Failed to load sensor data')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full bg-[#0D1117]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto" />
+          <p className="mt-4 text-gray-400 text-sm">Loading sensor network...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full bg-[#0D1117]">
+        <div className="text-center">
+          <p className="text-red-400 text-sm">{error}</p>
+          <button 
+            onClick={fetchSensors}
+            className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="h-full flex flex-col">
-      {/* Filters */}
-      <div className="bg-white border-b p-4">
-        <div className="flex flex-wrap gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Data Type
-            </label>
-            <select
-              value={filters.data_type}
-              onChange={(e) => setFilters(prev => ({ ...prev, data_type: e.target.value }))}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="">All Types</option>
-              <option value="raw_modes">Raw Mode‑S</option>
-              <option value="mlat_positions">MLAT Positions</option>
-              <option value="both">Both</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Pricing Model
-            </label>
-            <select
-              value={filters.pricing_model}
-              onChange={(e) => setFilters(prev => ({ ...prev, pricing_model: e.target.value }))}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="">All Models</option>
-              <option value="per_message">Per Message</option>
-              <option value="per_hour">Per Hour</option>
-              <option value="per_day">Per Day</option>
-              <option value="per_month">Per Month</option>
-              <option value="bundle">Bundle</option>
-            </select>
-          </div>
-          <div className="flex items-end">
-            <button
-              onClick={fetchSensors}
-              className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-            >
-              Apply Filters
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Map */}
+      {/* Map Container */}
       <div className="flex-1 relative">
         <MapContainer
-          center={[51.5, -0.1]}
-          zoom={8}
+          center={[51.5074, -0.1278]} // London center
+          zoom={4}
           style={{ height: '100%', width: '100%' }}
+          className="bg-[#0D1117]"
         >
           <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          
-          <MapController sensors={sensors} />
-          
+
+          {/* Sensor Markers */}
           {sensors.map((sensor) => (
             <Marker
               key={sensor.id}
-              position={[
-                sensor.location.coordinates[1],
-                sensor.location.coordinates[0]
-              ]}
+              position={[sensor.location.coordinates[0], sensor.location.coordinates[1]]}
               icon={sensorIcon}
               eventHandlers={{
                 click: () => setSelectedSensor(sensor),
               }}
             >
               <Popup>
-                <div className="p-2 min-w-64">
-                  <h3 className="font-semibold text-lg mb-2">{sensor.name}</h3>
+                <div className="bg-[#161B22] text-white p-4 rounded-lg min-w-[200px]">
+                  <h3 className="font-semibold text-white mb-2">{sensor.name}</h3>
+                  <p className="text-sm text-gray-400 mb-3">
+                    {sensor.offerings_count} active offerings
+                  </p>
                   
-                  <div className="space-y-2 text-sm">
-                    <div>
-                      <span className="font-medium">Offerings:</span> {sensor.offerings_count}
-                    </div>
-                    
-                    {sensor.min_price && (
-                      <div>
-                        <span className="font-medium">From:</span>{' '}
-                        {formatPrice(sensor.min_price, 'HBAR')}
-                      </div>
-                    )}
-                    
-                    {sensor.last_heartbeat && (
-                      <div>
-                        <span className="font-medium">Last seen:</span>{' '}
-                        {new Date(sensor.last_heartbeat).toLocaleString()}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-3 space-y-2">
-                    <h4 className="font-medium text-sm">Available Offerings:</h4>
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm text-white">Available Offerings:</h4>
                     {sensor.active_offerings.map((offering) => (
-                      <div key={offering.id} className="bg-gray-50 p-2 rounded text-xs">
-                        <div className="font-medium">
-                          {formatDataType(offering.data_type)}
+                      <div key={offering.id} className="bg-[#0D1117] p-2 rounded text-xs">
+                        <div className="font-medium text-white">
+                          {offering.data_type === 'raw_modes' && 'Raw Mode‑S'}
+                          {offering.data_type === 'mlat_positions' && 'MLAT Positions'}
+                          {offering.data_type === 'both' && 'Both Data Types'}
                         </div>
-                        <div>
-                          {formatPricingModel(offering.pricing_model)} -{' '}
-                          {formatPrice(offering.price_amount, offering.token_id)}
+                        <div className="text-gray-400">
+                          {offering.pricing_model === 'per_message' && `${offering.price_amount} ℏ per message`}
+                          {offering.pricing_model === 'per_hour' && `${offering.price_amount} ℏ per hour`}
+                          {offering.pricing_model === 'per_day' && `${offering.price_amount} ℏ per day`}
+                          {offering.pricing_model === 'bundle' && `${offering.price_amount} ℏ bundle`}
+                        </div>
+                        <button
+                          onClick={() => onPurchase(offering)}
+                          className="mt-1 px-2 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700"
+                        >
+                          Purchase Access
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Popup>
             </Marker>
           ))}
         </MapContainer>
@@ -190,54 +167,50 @@ export default function SensorMarketMap({ onPurchase }: SensorMarketMapProps) {
 
       {/* Selected Sensor Sidebar */}
       {selectedSensor && (
-        <div className="absolute top-4 right-4 w-80 bg-white rounded-lg shadow-lg p-4">
+        <div className="absolute top-4 right-4 w-80 bg-[#161B22] border border-[#30363D] rounded-lg p-4 shadow-xl">
           <div className="flex justify-between items-start mb-3">
-            <h3 className="font-semibold text-lg">{selectedSensor.name}</h3>
+            <h3 className="font-semibold text-lg text-white">{selectedSensor.name}</h3>
             <button
               onClick={() => setSelectedSensor(null)}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-white"
             >
-              ×
+              ✕
             </button>
           </div>
           
-          <div className="space-y-3 text-sm">
-            <div>
-              <span className="font-medium">Location:</span>{' '}
-              {selectedSensor.location.coordinates[1].toFixed(4)},{' '}
-              {selectedSensor.location.coordinates[0].toFixed(4)}
-            </div>
-            
-            <div>
-              <span className="font-medium">Active Offerings:</span>{' '}
-              {selectedSensor.offerings_count}
-            </div>
-            
-            {selectedSensor.min_price && (
-              <div>
-                <span className="font-medium">Starting from:</span>{' '}
-                {formatPrice(selectedSensor.min_price, 'HBAR')}
+          <p className="text-sm text-gray-400 mb-3">
+            {selectedSensor.offerings_count} active offerings
+          </p>
+          
+          <div className="space-y-2">
+            {selectedSensor.active_offerings.map((offering) => (
+              <div key={offering.id} className="bg-[#0D1117] p-3 rounded border border-[#30363D]">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-sm font-medium text-white">
+                    {offering.data_type === 'raw_modes' && 'Raw Mode‑S'}
+                    {offering.data_type === 'mlat_positions' && 'MLAT Positions'}
+                    {offering.data_type === 'both' && 'Both Data Types'}
+                  </span>
+                  <span className="text-sm text-indigo-400">
+                    {offering.price_amount} ℏ
+                  </span>
+                </div>
+                
+                <div className="text-xs text-gray-400 mb-2">
+                  {offering.pricing_model === 'per_message' && 'per message'}
+                  {offering.pricing_model === 'per_hour' && 'per hour'}
+                  {offering.pricing_model === 'per_day' && 'per day'}
+                  {offering.pricing_model === 'bundle' && 'bundle package'}
+                </div>
+                
+                <button
+                  onClick={() => onPurchase(offering)}
+                  className="w-full px-3 py-2 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700 transition-colors"
+                >
+                  Purchase Access
+                </button>
               </div>
-            )}
-            
-            <div className="pt-2 border-t">
-              <h4 className="font-medium mb-2">All Offerings:</h4>
-              <div className="space-y-2">
-                {selectedSensor.active_offerings.map((offering) => (
-                  <div key={offering.id} className="bg-gray-50 p-2 rounded">
-                    <div className="font-medium text-xs">
-                      {formatDataType(offering.data_type)}
-                    </div>
-                    <div className="text-xs text-gray-600">
-                      {formatPricingModel(offering.pricing_model)}
-                    </div>
-                    <div className="text-xs font-medium text-indigo-600">
-                      {formatPrice(offering.price_amount, offering.token_id)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       )}
