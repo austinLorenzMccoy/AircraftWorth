@@ -127,7 +127,14 @@ function InsightCard({ insight }: { insight: typeof mockInsights[0] }) {
             <p className="text-lg font-bold text-primary font-mono">{insight.price} SWT</p>
           </div>
         </div>
-        <Button className="w-full group-hover:bg-primary/90" size="sm">
+        <Button 
+          className="w-full group-hover:bg-primary/90" 
+          size="sm"
+          onClick={() => {
+            // Purchase functionality - for hackathon demo, show success message
+            alert(`Purchase initiated for: ${insight.title}\nPrice: ${insight.price} SWT\nProducer: ${insight.producer}\n\nIn production, this would:\n1. Connect to wallet\n2. Transfer SWT tokens\n3. Grant access to insight\n4. Add to library`);
+          }}
+        >
           <ShoppingCart className="w-4 h-4 mr-2" />
           Purchase Insight
         </Button>

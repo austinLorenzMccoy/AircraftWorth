@@ -15,6 +15,7 @@
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { MagicLinkModal } from '@/components/magic-link-modal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Step = 'wallet' | 'email' | 'check-email' | 'verifying' | 'enrolled' | 'error';
@@ -88,6 +89,7 @@ function OnboardingPage() {
   const [error,      setError]      = useState('');
   const [sending,    setSending]    = useState(false);
   const [hasWallet,  setHasWallet]  = useState(false);
+  const [magicLinkOpen, setMagicLinkOpen] = useState(false);
 
   // Check if a magic-link token is in the URL
   useEffect(() => {
@@ -334,7 +336,7 @@ function OnboardingPage() {
             SUBSCRIBE WITH EMAIL
           </div>
           <button
-            onClick={() => setStep('email')}
+            onClick={() => setMagicLinkOpen(true)}
             style={{ ...S.btn, background:'#7B8FFF11', border:'1px solid #7B8FFF44', color:'#7B8FFF', justifyContent:'center', gap:'8px' }}
           >
             <span>✉</span>
@@ -535,6 +537,17 @@ function OnboardingPage() {
         input::placeholder { color: #444; }
         input:focus { border-color: #7B8FFF !important; }
       `}</style>
+
+      {/* Magic Link Modal */}
+      <MagicLinkModal 
+        open={magicLinkOpen}
+        onOpenChange={setMagicLinkOpen}
+        onSuccess={() => {
+          // After magic link is sent, show success message
+          setStep('check-email');
+        }}
+        redirectTo="/mlat"
+      />
     </div>
   );
 }
